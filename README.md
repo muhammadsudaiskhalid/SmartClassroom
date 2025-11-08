@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# SmartClassroom
-=======
 # Smart Classroom
 
 A modern classroom management platform connecting teachers and students.
