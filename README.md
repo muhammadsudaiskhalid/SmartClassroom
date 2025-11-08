@@ -175,7 +175,7 @@ Edit `src/utils/constants.js` to add/modify universities:
 
 ```javascript
 export const UNIVERSITIES = [
-  'COMSATS University Islamabad',
+  Shifa Tameer-e-Millat University Islamabad',
   'NUST',
   'PIEAS',
   // Add more universities
@@ -369,22 +369,6 @@ await classService.removeStudentFromClass(classId, studentId);
 
 ---
 
-## Screenshots
-
-### Authentication
-![Sign In](https://via.placeholder.com/800x500?text=Sign+In+Page)
-![Sign Up](https://via.placeholder.com/800x500?text=Sign+Up+Page)
-
-### Teacher Dashboard
-![Teacher Dashboard](https://via.placeholder.com/800x500?text=Teacher+Dashboard)
-![Class Details](https://via.placeholder.com/800x500?text=Class+Details)
-
-### Student Dashboard
-![Student Dashboard](https://via.placeholder.com/800x500?text=Student+Dashboard)
-![Class Minutes](https://via.placeholder.com/800x500?text=Class+Minutes)
-
----
-
 ## Roadmap
 
 ### Version 2.0 (Planned)
@@ -452,8 +436,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Project Maintainer:** Sudais Khalid
 
 - Email: msudaiskhalid.ai@gmail.com
-- GitHub: [@yourusername](https://github.com/muhammadsudaiskhalid)
-- LinkedIn: [Your Name](https://linkedin.com/in/sudais-khalid)
+- GitHub: [@muhammadsudaiskhalid](https://github.com/muhammadsudaiskhalid)
+- LinkedIn: [Sudais Khalid](https://linkedin.com/in/sudais-khalid)
 
 **Project Link:** [https://github.com/yourusername/smart-classroom](https://github.com/yourusername/smart-classroom)
 
@@ -493,7 +477,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Reporting Security Issues
 
-If you discover a security vulnerability, please send an email to security@smartclassroom.com. All security vulnerabilities will be promptly addressed.
+If you discover a security vulnerability, please send an email to msudaiskhalid.ai@gmail.com . All security vulnerabilities will be promptly addressed.
 
 ### Security Best Practices
 
