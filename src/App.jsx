@@ -8,10 +8,13 @@ import StudentDashboard from './components/student/StudentDashboard';
 import ClassDetail from './components/teacher/ClassDetail';
 import ClassView from './components/student/ClassView';
 import ProfileModal from './components/shared/ProfileModal';
+import AdminLogin from './components/admin/AdminLogin';
+import AdminDashboard from './components/admin/AdminDashboard';
 import { LoadingPage } from './components/shared/LoadingSpinner';
 import ToastContainer, { showToast } from './components/shared/ToastContainer';
 import { useAuthContext } from './context/AuthContext';
 import { useClassContext } from './context/ClassContext';
+import adminService from './services/admin.service';
 import minutesService from './services/minutes.service';
 import { USER_TYPES } from './utils/constants';
 import './styles/globals.css';
@@ -40,14 +43,74 @@ function App() {
   const [classRequests, setClassRequests] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // Admin state
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminSession, setAdminSession] = useState(null);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  // Check for admin session on mount
+  useEffect(() => {
+    checkAdminSession();
+  }, []);
+
+  const checkAdminSession = async () => {
+    try {
+      const session = await adminService.checkAdminSession();
+      if (session) {
+        setAdminSession(session);
+        setIsAdminMode(true);
+        setView('admin-dashboard');
+      }
+    } catch (error) {
+      console.error('Check admin session error:', error);
+    } finally {
+      setCheckingAdmin(false);
+    }
+  };
+
+  // Admin handlers
+  const handleAdminLogin = async (username, password, secretKey) => {
+    try {
+      const session = await adminService.adminLogin(username, password, secretKey);
+      setAdminSession(session);
+      setIsAdminMode(true);
+      setView('admin-dashboard');
+      showToast('Admin access granted', 'success');
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await adminService.adminLogout();
+      setAdminSession(null);
+      setIsAdminMode(false);
+      setView('signin');
+      showToast('Admin logged out', 'info');
+    } catch (error) {
+      console.error('Admin logout error:', error);
+    }
+  };
+
+  // Check if accessing admin route
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/admin' || path.startsWith('/admin/')) {
+      if (!adminSession) {
+        setView('admin-login');
+      }
+    }
+  }, [adminSession]);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !isAdminMode) {
       setView('dashboard');
-    } else {
+    } else if (!currentUser && !isAdminMode && view !== 'admin-login') {
       setView('signin');
     }
-  }, [currentUser]);
+  }, [currentUser, isAdminMode]);
 
   useEffect(() => {
     if (selectedClass) {
@@ -306,10 +369,31 @@ function App() {
     return requests.map(r => r.classId);
   };
 
-  if (authLoading) {
-    return <LoadingPage message="Loading your session..." />;
+  if (checkingAdmin || authLoading) {
+    return <LoadingPage message="Loading..." />;
   }
 
+  // Admin Login
+  if (view === 'admin-login') {
+    return (
+      <>
+        <ToastContainer />
+        <AdminLogin onLogin={handleAdminLogin} />
+      </>
+    );
+  }
+
+  // Admin Dashboard
+  if (isAdminMode && view === 'admin-dashboard') {
+    return (
+      <>
+        <ToastContainer />
+        <AdminDashboard onLogout={handleAdminLogout} />
+      </>
+    );
+  }
+
+  // Regular User Flow
   if (!currentUser) {
     return (
       <>
@@ -398,7 +482,6 @@ function App() {
         )}
       </MainLayout>
 
-      {/* Profile Edit Modal */}
       <ProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}

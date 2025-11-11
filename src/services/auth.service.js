@@ -1,4 +1,5 @@
 import storageService from './storage.service';
+import adminService from './admin.service';
 import { STORAGE_KEYS } from '../utils/constants';
 
 class AuthService {
@@ -8,6 +9,12 @@ class AuthService {
   async signUp(userData) {
     try {
       const { registrationNumber, password, name, university, department, semester, userType } = userData;
+
+      // Check university access
+      const isAccessible = await adminService.isUniversityAccessible(university);
+      if (!isAccessible) {
+        throw new Error('This university is currently inactive or has expired. Please contact your institution administrator.');
+      }
 
       // Validate required fields
       if (!registrationNumber || !password || !name || !university || !department || !userType) {
@@ -24,7 +31,6 @@ class AuthService {
           throw new Error('This registration number is already registered');
         }
       } catch (error) {
-        // If error is not about existing user, continue
         if (error.message.includes('already registered')) {
           throw error;
         }
@@ -34,7 +40,7 @@ class AuthService {
       const user = {
         id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         registrationNumber,
-        password, // In production, hash this!
+        password,
         name,
         university,
         department,
@@ -57,7 +63,6 @@ class AuthService {
 
       console.log('User created successfully');
 
-      // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
@@ -86,6 +91,12 @@ class AuthService {
 
       const user = JSON.parse(result.value);
 
+      // Check university access
+      const isAccessible = await adminService.isUniversityAccessible(user.university);
+      if (!isAccessible) {
+        throw new Error('Your university access has been suspended or expired. Please contact your institution administrator.');
+      }
+
       // Verify password
       if (user.password !== password) {
         throw new Error('Invalid registration number or password');
@@ -96,7 +107,6 @@ class AuthService {
 
       console.log('User signed in successfully');
 
-      // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
@@ -129,7 +139,17 @@ class AuthService {
     try {
       const result = await storageService.get(STORAGE_KEYS.CURRENT_USER);
       if (result && result.value) {
-        return JSON.parse(result.value);
+        const user = JSON.parse(result.value);
+        
+        // Check university access for existing session
+        const isAccessible = await adminService.isUniversityAccessible(user.university);
+        if (!isAccessible) {
+          // Auto-logout if university is no longer accessible
+          await this.signOut();
+          return null;
+        }
+        
+        return user;
       }
       return null;
     } catch (error) {

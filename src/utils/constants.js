@@ -37,6 +37,7 @@ export const UNIVERSITIES = [
   'University of the Punjab',
   'Institute of Space Technology (IST)',
   'University of Agriculture Faisalabad',
+  'Abdul Wali Khan University Mardan',
   'University of Peshawar',
   'Quaid-e-Azam University',
   'University of Sargodha',
@@ -147,4 +148,28 @@ export const MESSAGES = {
     UPDATE_SUCCESS: 'Class minutes updated successfully!',
     DELETE_SUCCESS: 'Class minutes deleted successfully!'
   }
+};
+
+// Admin Configuration
+export const ADMIN_CREDENTIALS = {
+  username: 'superadmin',
+  password: 'Admin@SmartClassroom2024', // Change this to a strong password
+  secretKey: 'SMART_CLASSROOM_ADMIN_2024' // Additional security layer
+};
+
+// University Status
+export const UNIVERSITY_STATUS = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+  SUSPENDED: 'suspended',
+  EXPIRED: 'expired'
+};
+
+// Subscription Types
+export const SUBSCRIPTION_TYPES = {
+  TRIAL: 'trial',
+  MONTHLY: 'monthly',
+  QUARTERLY: 'quarterly',
+  YEARLY: 'yearly',
+  LIFETIME: 'lifetime'
 };
