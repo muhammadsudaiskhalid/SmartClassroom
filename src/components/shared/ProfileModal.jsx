@@ -140,8 +140,23 @@ const ProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
           )}
         </div>
 
-        {/* Editable Semester - Only for Students */}
-        {user?.type === 'student' && (
+        {/* Semester: students cannot edit this field */}
+        {user?.type === 'student' ? (
+          <div>
+            <label className="label">Current Semester</label>
+            <div className="relative">
+              <GraduationCap size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none z-10" />
+              <input
+                type="text"
+                name="semester"
+                value={formData.semester || user?.semester || ''}
+                readOnly
+                className="input pl-10 bg-neutral-50 cursor-not-allowed"
+              />
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">Semester changes must be performed by an administrator or instructor.</p>
+          </div>
+        ) : (
           <div>
             <label className="label">Current Semester</label>
             <div className="relative">
@@ -164,14 +179,11 @@ const ProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                 {errors.semester}
               </p>
             )}
-            <p className="text-xs text-neutral-500 mt-1">
-              Update this when you get promoted to the next semester
-            </p>
           </div>
         )}
 
         {/* Info about semester change */}
-        {user?.type === 'student' && formData.semester !== user?.semester && (
+        {user?.type !== 'student' && formData.semester !== user?.semester && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm text-yellow-800 flex items-start gap-2">
               <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />

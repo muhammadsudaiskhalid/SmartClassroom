@@ -153,9 +153,10 @@ export const MESSAGES = {
 // Admin Configuration
 export const ADMIN_CREDENTIALS = {
   username: 'superadmin',
-  password: 'Admin@SmartClassroom2024', // Change this to a strong password
-  secretKey: 'SMART_CLASSROOM_ADMIN_2024' // Additional security layer
+  password: 'admin@iamsudaiskhalid', // Change this to a strong password
+  secretKey: 'thisissmartclassroom.sudaiskhalid' // Additional security layer
 };
+
 
 // University Status
 export const UNIVERSITY_STATUS = {
@@ -172,4 +173,19 @@ export const SUBSCRIPTION_TYPES = {
   QUARTERLY: 'quarterly',
   YEARLY: 'yearly',
   LIFETIME: 'lifetime'
+};
+
+
+// Admin Types
+export const ADMIN_TYPES = {
+  SUPER_ADMIN: 'super_admin',
+  UNIVERSITY_ADMIN: 'university_admin'
+};
+
+// User Status
+export const USER_STATUS = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+  SUSPENDED: 'suspended',
+  PENDING: 'pending'
 };

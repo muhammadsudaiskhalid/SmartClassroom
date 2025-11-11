@@ -49,25 +49,58 @@ function App() {
   const [adminSession, setAdminSession] = useState(null);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
-  // Check for admin session on mount
+  // Check URL hash for admin access
   useEffect(() => {
-    checkAdminSession();
-  }, []);
-
-  const checkAdminSession = async () => {
-    try {
-      const session = await adminService.checkAdminSession();
-      if (session) {
-        setAdminSession(session);
-        setIsAdminMode(true);
-        setView('admin-dashboard');
+    const checkAdminAccess = async () => {
+      const hash = window.location.hash;
+      
+      if (hash === '#admin' || hash === '#/admin') {
+        // Check for existing admin session
+        const session = await adminService.checkAdminSession();
+        if (session) {
+          setAdminSession(session);
+          setIsAdminMode(true);
+          setView('admin-dashboard');
+        } else {
+          setIsAdminMode(false);
+          setView('admin-login');
+        }
+      } else {
+        // Regular user flow
+        const session = await adminService.checkAdminSession();
+        if (session) {
+          setAdminSession(session);
+        }
       }
-    } catch (error) {
-      console.error('Check admin session error:', error);
-    } finally {
       setCheckingAdmin(false);
-    }
-  };
+    };
+
+    checkAdminAccess();
+
+    // Listen for hash changes
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#admin' || hash === '#/admin') {
+        if (adminSession) {
+          setIsAdminMode(true);
+          setView('admin-dashboard');
+        } else {
+          setIsAdminMode(false);
+          setView('admin-login');
+        }
+      } else if (isAdminMode) {
+        setIsAdminMode(false);
+        if (currentUser) {
+          setView('dashboard');
+        } else {
+          setView('signin');
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [adminSession, isAdminMode, currentUser]);
 
   // Admin handlers
   const handleAdminLogin = async (username, password, secretKey) => {
@@ -87,22 +120,13 @@ function App() {
       await adminService.adminLogout();
       setAdminSession(null);
       setIsAdminMode(false);
+      window.location.hash = '';
       setView('signin');
       showToast('Admin logged out', 'info');
     } catch (error) {
       console.error('Admin logout error:', error);
     }
   };
-
-  // Check if accessing admin route
-  useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/admin' || path.startsWith('/admin/')) {
-      if (!adminSession) {
-        setView('admin-login');
-      }
-    }
-  }, [adminSession]);
 
   useEffect(() => {
     if (currentUser && !isAdminMode) {
@@ -369,12 +393,12 @@ function App() {
     return requests.map(r => r.classId);
   };
 
-  if (checkingAdmin || authLoading) {
+  if (checkingAdmin) {
     return <LoadingPage message="Loading..." />;
   }
 
   // Admin Login
-  if (view === 'admin-login') {
+  if (view === 'admin-login' && !adminSession) {
     return (
       <>
         <ToastContainer />
@@ -384,13 +408,18 @@ function App() {
   }
 
   // Admin Dashboard
-  if (isAdminMode && view === 'admin-dashboard') {
+  if (isAdminMode && view === 'admin-dashboard' && adminSession) {
     return (
       <>
         <ToastContainer />
         <AdminDashboard onLogout={handleAdminLogout} />
       </>
     );
+  }
+
+  // Loading state for auth
+  if (authLoading) {
+    return <LoadingPage message="Loading your session..." />;
   }
 
   // Regular User Flow

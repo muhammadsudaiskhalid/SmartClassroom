@@ -155,7 +155,7 @@ const AdminLogin = ({ onLogin }) => {
         </div>
 
         <div className="mt-6 text-center text-xs text-neutral-600">
-          © 2024 Smart Classroom Admin. All rights reserved.
+          © 2025 Smart Classroom Admin. All rights reserved.
         </div>
       </div>
     </div>

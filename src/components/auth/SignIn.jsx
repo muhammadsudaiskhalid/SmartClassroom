@@ -53,7 +53,8 @@ const SignIn = ({ onSignIn, onSwitchToSignUp }) => {
   };
 
   return (
-    <div className="p-8">
+    <>
+      <div className="p-8">
       <h2 className="text-2xl font-bold text-neutral-900 mb-2">Welcome Back</h2>
       <p className="text-neutral-600 mb-6">Sign in with your university credentials</p>
 
@@ -133,7 +134,18 @@ const SignIn = ({ onSignIn, onSwitchToSignUp }) => {
           </button>
         </p>
       </div>
-    </div>
+      </div>
+
+      {/* Admin Access Link */}
+      <div className="mt-4 text-center">
+        <a
+          href="#admin"
+          className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+        >
+          Admin Access
+        </a>
+      </div>
+    </>
   );
 };
 

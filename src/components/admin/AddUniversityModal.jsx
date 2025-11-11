@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Building2, Calendar, Users, Mail, Phone, FileText, AlertCircle } from 'lucide-react';
 import Modal from '../shared/Modal';
 import Button from '../shared/Button';
-import { UNIVERSITY_STATUS, SUBSCRIPTION_TYPES } from '../../utils/constants';
+import { UNIVERSITY_STATUS, SUBSCRIPTION_TYPES, UNIVERSITIES } from '../../utils/constants';
 
 const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
   const [formData, setFormData] = useState({
@@ -109,7 +109,7 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* University Name */}
+        {/* University Name (choose from canonical list) */}
         <div>
           <label className="label">University Name *</label>
           <div className="relative">
@@ -117,11 +117,17 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
             <input
               type="text"
               name="name"
+              list="universities-list"
               value={formData.name}
               onChange={handleChange}
-              placeholder="e.g., COMSATS University Islamabad"
+              placeholder="Start typing or select a university"
               className={`input pl-10 ${errors.name ? 'input-error' : ''}`}
             />
+            <datalist id="universities-list">
+              {UNIVERSITIES.map((u) => (
+                <option key={u} value={u} />
+              ))}
+            </datalist>
           </div>
           {errors.name && (
             <p className="text-red-600 text-sm mt-1 flex items-center gap-1">
