@@ -14,7 +14,12 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
     maxUsers: 1000,
     contactEmail: '',
     contactPhone: '',
-    notes: ''
+    notes: '',
+    // Optional university admin credentials
+    adminName: '',
+    adminRegistrationNumber: '',
+    adminPassword: '',
+    adminEmail: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -54,6 +59,14 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
       newErrors.maxUsers = 'Max users must be at least 1';
     }
 
+    // If admin registration is filled, require password and registration number
+    if (formData.adminRegistrationNumber && (!formData.adminPassword || formData.adminPassword.length < 6)) {
+      newErrors.adminPassword = 'Admin password must be at least 6 characters';
+    }
+    if (formData.adminPassword && !formData.adminRegistrationNumber) {
+      newErrors.adminRegistrationNumber = 'Admin registration number is required when setting a password';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -65,7 +78,18 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
 
     setLoading(true);
     try {
-      await onAdd(formData);
+      // Build payload: include admin data only if provided
+      const payload = { ...formData };
+      if (formData.adminRegistrationNumber) {
+        payload.admin = {
+          name: formData.adminName || formData.contactEmail || formData.name + ' Admin',
+          registrationNumber: formData.adminRegistrationNumber,
+          password: formData.adminPassword,
+          email: formData.adminEmail || formData.contactEmail || ''
+        };
+      }
+
+      await onAdd(payload);
       setFormData({
         name: '',
         status: 'active',
@@ -75,7 +99,11 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
         maxUsers: 1000,
         contactEmail: '',
         contactPhone: '',
-        notes: ''
+        notes: '',
+        adminName: '',
+        adminRegistrationNumber: '',
+        adminPassword: '',
+        adminEmail: ''
       });
       setErrors({});
     } catch (error) {
@@ -275,6 +303,34 @@ const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
               rows={3}
               className="input pl-10 resize-none"
             />
+          </div>
+        </div>
+
+        {/* University Admin (optional) */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h3 className="font-semibold mb-2">Create University Admin (optional)</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Admin Full Name</label>
+              <input name="adminName" value={formData.adminName} onChange={handleChange} className="input" placeholder="Admin full name" />
+            </div>
+            <div>
+              <label className="label">Admin Registration Number (username)</label>
+              <input name="adminRegistrationNumber" value={formData.adminRegistrationNumber} onChange={handleChange} className={`input ${errors.adminRegistrationNumber ? 'input-error' : ''}`} placeholder="e.g. UADM-001" />
+              {errors.adminRegistrationNumber && <p className="text-red-600 text-sm mt-1">{errors.adminRegistrationNumber}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <div>
+              <label className="label">Admin Password</label>
+              <input name="adminPassword" type="password" value={formData.adminPassword} onChange={handleChange} className={`input ${errors.adminPassword ? 'input-error' : ''}`} placeholder="Temporary password (min 6 chars)" />
+              {errors.adminPassword && <p className="text-red-600 text-sm mt-1">{errors.adminPassword}</p>}
+            </div>
+            <div>
+              <label className="label">Admin Email</label>
+              <input name="adminEmail" type="email" value={formData.adminEmail} onChange={handleChange} className="input" placeholder="admin@university.edu.pk" />
+            </div>
           </div>
         </div>
 

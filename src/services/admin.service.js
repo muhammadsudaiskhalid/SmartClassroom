@@ -598,6 +598,27 @@ class AdminService {
       await storageService.set('universities', JSON.stringify(list), true);
       // set the accessibility key too
       await storageService.set(`university_status:${newUniv.name}`, newUniv.status, true);
+      // If admin credentials provided, provision a university admin account
+      try {
+        if (universityData.admin && universityData.admin.registrationNumber) {
+          const adminPayload = {
+            name: universityData.admin.name || `${newUniv.name} Admin`,
+            registrationNumber: universityData.admin.registrationNumber,
+            password: universityData.admin.password,
+            email: universityData.admin.email || universityData.contactEmail || '',
+            university: newUniv.name
+          };
+          const createdAdmin = await this.addAdmin(adminPayload);
+          // attach admin id to university record for reference
+          newUniv.adminId = createdAdmin.id;
+          // persist the updated universities list with adminId
+          const replaced = list.map(u => u.id === newUniv.id ? newUniv : u);
+          await storageService.set('universities', JSON.stringify(replaced), true);
+        }
+      } catch (err) {
+        // if admin creation fails, log but do not prevent university creation
+        console.error('Failed to provision university admin:', err);
+      }
       return newUniv;
     } catch (error) {
       console.error('Error adding university:', error);
