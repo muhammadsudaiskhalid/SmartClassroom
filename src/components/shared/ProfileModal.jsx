@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Building2, BookOpen, GraduationCap, AlertCircle, Save } from 'lucide-react';
+import { User, BookOpen, GraduationCap, AlertCircle, Save } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
 import { isValidName } from '../../utils/validators';

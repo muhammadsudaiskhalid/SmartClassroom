@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Users, Calendar, Edit, Trash2, Power, MoreVertical, AlertCircle } from 'lucide-react';
+import { Building2, Edit, Trash2, Power, AlertCircle } from 'lucide-react';
 import Button from '../shared/Button';
 import EditUniversityModal from './EditUniversityModal';
 
@@ -47,8 +47,7 @@ const UniversityList = ({ universities, onUpdate, onDelete, onToggleStatus, load
     const now = new Date();
     const expiry = new Date(expiryDate);
     const diff = expiry - now;
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
   const handleEdit = (university) => {

@@ -5,14 +5,6 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleClose();
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [duration]);
-
   const handleClose = () => {
     setIsExiting(true);
     setTimeout(() => {
@@ -20,6 +12,19 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
       onClose();
     }, 300);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // start exit animation then call onClose after the small delay
+      setIsExiting(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onClose();
+      }, 300);
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
 
   if (!isVisible) return null;
 

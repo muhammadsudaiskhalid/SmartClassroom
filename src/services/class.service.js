@@ -44,11 +44,10 @@ class ClassService {
    */
   async getTeacherClasses(teacherId) {
     try {
-      const classes = await storageService.getAllWithPrefix(
+      return await storageService.getAllWithPrefix(
         `${STORAGE_KEYS.CLASS_PREFIX}${teacherId}:`,
         true
       );
-      return classes;
     } catch (error) {
       console.error('Get teacher classes error:', error);
       return [];
@@ -60,11 +59,10 @@ class ClassService {
    */
   async getAllClasses() {
     try {
-      const classes = await storageService.getAllWithPrefix(
+      return await storageService.getAllWithPrefix(
         STORAGE_KEYS.CLASS_PREFIX,
         true
       );
-      return classes;
     } catch (error) {
       console.error('Get all classes error:', error);
       return [];
@@ -236,4 +234,6 @@ class ClassService {
   }
 }
 
-export default new ClassService();
+const classService = new ClassService();
+
+export default classService;

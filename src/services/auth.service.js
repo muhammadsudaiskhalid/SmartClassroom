@@ -121,11 +121,10 @@ class AuthService {
   async saveSession(user) {
     try {
       const { password, ...userWithoutPassword } = user;
-      const result = await storageService.set(
+      return await storageService.set(
         STORAGE_KEYS.CURRENT_USER,
         JSON.stringify(userWithoutPassword)
       );
-      return result;
     } catch (error) {
       console.error('Save session error:', error);
       throw new Error('Failed to save session');
@@ -232,4 +231,6 @@ class AuthService {
   }
 }
 
-export default new AuthService();
+const authService = new AuthService();
+
+export default authService;

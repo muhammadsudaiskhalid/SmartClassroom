@@ -161,4 +161,6 @@ class MinutesService {
   }
 }
 
-export default new MinutesService();
+const minutesService = new MinutesService();
+
+export default minutesService;

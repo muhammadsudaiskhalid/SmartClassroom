@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { LogOut, User, BookOpen, ChevronDown, Building2, GraduationCap, Edit } from 'lucide-react';
-import Button from './Button';
 
 const Navbar = ({ user, onLogout, onEditProfile }) => {
   const [showDropdown, setShowDropdown] = useState(false);

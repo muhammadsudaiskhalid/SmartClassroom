@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Building2, Calendar, Users, Mail, Phone, FileText, AlertCircle } from 'lucide-react';
 import Modal from '../shared/Modal';
 import Button from '../shared/Button';
-import { UNIVERSITY_STATUS, SUBSCRIPTION_TYPES, UNIVERSITIES } from '../../utils/constants';
+import { UNIVERSITIES } from '../../utils/constants';
 
 const AddUniversityModal = ({ isOpen, onClose, onAdd }) => {
   const [formData, setFormData] = useState({

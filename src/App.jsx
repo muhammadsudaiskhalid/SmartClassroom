@@ -8,8 +8,10 @@ import StudentDashboard from './components/student/StudentDashboard';
 import ClassDetail from './components/teacher/ClassDetail';
 import ClassView from './components/student/ClassView';
 import ProfileModal from './components/shared/ProfileModal';
-import AdminLogin from './components/admin/AdminLogin';
+import AdminSignIn from './components/admin/AdminSignIn';
 import AdminDashboard from './components/admin/AdminDashboard';
+import SuperAdminDashboard from './components/admin/SuperAdminDashboard';
+import UniversityAdminDashboard from './components/universityAdmin/UniversityAdminDashboard';
 import { LoadingPage } from './components/shared/LoadingSpinner';
 import ToastContainer, { showToast } from './components/shared/ToastContainer';
 import { useAuthContext } from './context/AuthContext';
@@ -50,9 +52,10 @@ function App() {
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
   // Check URL hash for admin access
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const hash = window.location.hash;
+  const { hash } = window.location;
       
       if (hash === '#admin' || hash === '#/admin') {
         // Check for existing admin session
@@ -79,7 +82,7 @@ function App() {
 
     // Listen for hash changes
     const handleHashChange = () => {
-      const hash = window.location.hash;
+      const { hash } = window.location;
       if (hash === '#admin' || hash === '#/admin') {
         if (adminSession) {
           setIsAdminMode(true);
@@ -103,17 +106,6 @@ function App() {
   }, [adminSession, isAdminMode, currentUser]);
 
   // Admin handlers
-  const handleAdminLogin = async (username, password, secretKey) => {
-    try {
-      const session = await adminService.adminLogin(username, password, secretKey);
-      setAdminSession(session);
-      setIsAdminMode(true);
-      setView('admin-dashboard');
-      showToast('Admin access granted', 'success');
-    } catch (error) {
-      throw error;
-    }
-  };
 
   const handleAdminLogout = async () => {
     try {
@@ -136,6 +128,7 @@ function App() {
     }
   }, [currentUser, isAdminMode]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedClass) {
       loadClassData();
@@ -397,12 +390,18 @@ function App() {
     return <LoadingPage message="Loading..." />;
   }
 
-  // Admin Login
+  // Admin Login (legacy admin and university admin flows)
   if (view === 'admin-login' && !adminSession) {
     return (
       <>
         <ToastContainer />
-        <AdminLogin onLogin={handleAdminLogin} />
+        <AdminSignIn onSignIn={(admin) => {
+          // AdminSignIn provides the verified admin object
+          setAdminSession(admin);
+          setIsAdminMode(true);
+          setView('admin-dashboard');
+          showToast('Admin access granted', 'success');
+        }} />
       </>
     );
   }
@@ -412,7 +411,11 @@ function App() {
     return (
       <>
         <ToastContainer />
-        <AdminDashboard onLogout={handleAdminLogout} />
+        {adminSession.type === 'super_admin' ? (
+          <SuperAdminDashboard onLogout={handleAdminLogout} />
+        ) : (
+          <UniversityAdminDashboard adminSession={adminSession} onLogout={handleAdminLogout} />
+        )}
       </>
     );
   }

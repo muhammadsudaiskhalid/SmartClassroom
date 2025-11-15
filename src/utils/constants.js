@@ -1,3 +1,5 @@
+import universitiesList from '../data/universities.json';
+
 // User Types
 export const USER_TYPES = {
   TEACHER: 'teacher',
@@ -30,56 +32,8 @@ export const ROUTES = {
   CLASS_DETAIL: '/class/:id'
 };
 
-// Universities in Pakistan
-export const UNIVERSITIES = [
-  'University of Punjab',
-  'Lahore College for Women University',
-  'University of the Punjab',
-  'Institute of Space Technology (IST)',
-  'University of Agriculture Faisalabad',
-  'Abdul Wali Khan University Mardan',
-  'University of Peshawar',
-  'Quaid-e-Azam University',
-  'University of Sargodha',
-  'University of Gujrat',
-  'Islamia University of Bahawalpur',
-  'Bahauddin Zakariya University',
-  'University of Azad Jammu and Kashmir',
-  'Khyber Medical University',
-  'Dow University of Health Sciences',
-  'Aga Khan University',
-  'Ziauddin University',
-  'Liaquat University of Medical and Health Sciences',
-  'King Edward Medical University',
-  'Allama Iqbal Medical College',
-  'Fatima Jinnah Medical University',
-  'Jinnah Sindh Medical University',
-  'University of Veterinary and Animal Sciences',
-  'Pakistan Institute of Development Economics (PIDE)',
-  'COMSATS University Islamabad',
-  'National University of Sciences and Technology (NUST)',
-  'Pakistan Institute of Engineering and Applied Sciences (PIEAS)',
-  'Shifa Tameer-e-Millat University',
-  'Air University',
-  'Bahria University',
-  'FAST National University',
-  'University of Engineering and Technology (UET) Lahore',
-  'Punjab University',
-  'University of Karachi',
-  'NED University of Engineering and Technology',
-  'Ghulam Ishaq Khan Institute (GIKI)',
-  'Lahore University of Management Sciences (LUMS)',
-  'Institute of Business Administration (IBA) Karachi',
-  'University of Central Punjab',
-  'Superior University',
-  'Virtual University of Pakistan',
-  'Allama Iqbal Open University',
-  'University of Management and Technology (UMT)',
-  'Riphah International University',
-  'Iqra University',
-  'Indus Valley School of Art and Architecture',
-  'National University of Modern Languages (NUML)'
-];
+// Universities in Pakistan (moved to data file to reduce bundle size)
+export const UNIVERSITIES = universitiesList;
 
 // Departments
 export const DEPARTMENTS = [

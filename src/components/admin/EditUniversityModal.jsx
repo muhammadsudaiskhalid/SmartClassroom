@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Calendar, Users, Mail, Phone, FileText, AlertCircle } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import Modal from '../shared/Modal';
 import Button from '../shared/Button';
 

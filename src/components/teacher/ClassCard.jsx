@@ -3,12 +3,7 @@ import { BookOpen, Users, Calendar, ChevronRight, GraduationCap } from 'lucide-r
 import { formatDateShort } from '../../utils/dateFormatter';
 
 const ClassCard = ({ classData, onClick }) => {
-  // Get departments string
-  const departmentsText = Array.isArray(classData.departments)
-    ? classData.departments.length > 2
-      ? `${classData.departments.slice(0, 2).join(', ')} +${classData.departments.length - 2} more`
-      : classData.departments.join(', ')
-    : classData.department || classData.departments;
+  // departments display handled directly in JSX below
 
   return (
     <div

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import Button from './Button';
+// Button not used here; footer receives content from callers
 
 const Modal = ({ 
   isOpen, 
