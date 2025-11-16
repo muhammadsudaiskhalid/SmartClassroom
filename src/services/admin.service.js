@@ -84,8 +84,7 @@ class AdminService {
       const newStudent = {
         id: `S-${Date.now()}`,
         name: studentData.name,
-        registrationNumber: studentData.registrationNumber,
-        studentId: studentData.studentId,
+        registrationNumber: studentData.registrationNumber, // Serves as both ID and reg number
         department: studentData.department,
         semester: studentData.semester,
         email: studentData.email,

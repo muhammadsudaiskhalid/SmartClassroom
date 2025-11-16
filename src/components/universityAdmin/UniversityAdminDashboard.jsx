@@ -17,7 +17,6 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
   const [editUser, setEditUser] = useState(null);
   const [editType, setEditType] = useState('teacher');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addType, setAddType] = useState('teacher');
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetTarget, setResetTarget] = useState({ id: null, type: null, name: '' });
 
@@ -175,7 +174,7 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-orange-500">Teachers <span className="text-sm text-neutral-500">({stats.totalTeachers})</span></h2>
               <div className="flex gap-2">
-                <button onClick={() => { setAddType('teacher'); setShowAddModal(true); }} className="px-3 py-1 bg-orange-500 text-white rounded shadow-sm hover:bg-orange-600">Add Teacher</button>
+                <button onClick={() => setShowAddModal(true)} className="px-3 py-1 bg-orange-500 text-white rounded shadow-sm hover:bg-orange-600">Add User</button>
               </div>
             </div>
 
@@ -203,7 +202,7 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-orange-500">Students <span className="text-sm text-neutral-500">({stats.totalStudents})</span></h2>
               <div className="flex gap-2">
-                <button onClick={() => { setAddType('student'); setShowAddModal(true); }} className="px-3 py-1 bg-orange-500 text-white rounded shadow-sm hover:bg-orange-600">Add Student</button>
+                <button onClick={() => setShowAddModal(true)} className="px-3 py-1 bg-orange-500 text-white rounded shadow-sm hover:bg-orange-600">Add User</button>
               </div>
             </div>
 
@@ -262,7 +261,6 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
 
       {showAddModal && (
         <AddUserModal
-          type={addType}
           onClose={() => setShowAddModal(false)}
           onCreate={handleCreateUser}
         />
