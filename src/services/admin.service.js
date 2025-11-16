@@ -43,8 +43,8 @@ class AdminService {
       const newTeacher = {
         id: `T-${Date.now()}`,
         name: teacherData.name,
-        registrationNumber: teacherData.registrationNumber,
-        employeeId: teacherData.employeeId,
+        employeeId: teacherData.employeeId, // Primary identifier and login credential
+        registrationNumber: teacherData.employeeId, // Same as employeeId for consistency
         department: teacherData.department,
         email: teacherData.email,
         password: teacherData.password,
@@ -57,10 +57,10 @@ class AdminService {
       teachers.push(newTeacher);
       await storageService.set(`teachers:${university}`, JSON.stringify(teachers), true);
 
-      // Also add to users collection for authentication
+      // Also add to users collection for authentication (use employeeId as registrationNumber)
       const users = await this.getAllUsers();
       users.push({
-        registrationNumber: newTeacher.registrationNumber,
+        registrationNumber: newTeacher.employeeId, // Use employeeId for login
         password: newTeacher.password,
         userType: 'teacher',
         university: university,

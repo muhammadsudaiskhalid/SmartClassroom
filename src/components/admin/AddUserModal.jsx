@@ -6,8 +6,8 @@ const AddUserModal = ({ type: initialType = 'teacher', onClose, onCreate }) => {
   const [activeTab, setActiveTab] = useState(initialType);
   const [formData, setFormData] = useState({
     name: '',
-    registrationNumber: '',
-    employeeId: '',
+    registrationNumber: '', // Used for students only
+    employeeId: '', // Used for teachers only
     department: '',
     email: '',
     semester: '',
@@ -42,11 +42,24 @@ const AddUserModal = ({ type: initialType = 'teacher', onClose, onCreate }) => {
     setLoading(true);
     setError('');
     try {
-      // For students, registrationNumber is the same as their ID
+      // Prepare payload based on user type
       const payload = {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        department: formData.department,
+        password: formData.password,
         type: activeTab
       };
+      
+      // For teachers: use employeeId as login credential (registrationNumber)
+      if (activeTab === 'teacher') {
+        payload.employeeId = formData.employeeId;
+        payload.registrationNumber = formData.employeeId; // Employee ID is used for login
+      } else {
+        // For students: use registrationNumber for both ID and login
+        payload.registrationNumber = formData.registrationNumber;
+        payload.semester = formData.semester;
+      }
       
       await onCreate(payload);
       onClose();
@@ -115,7 +128,7 @@ const AddUserModal = ({ type: initialType = 'teacher', onClose, onCreate }) => {
 
             {activeTab === 'teacher' ? (
               <>
-                {/* Teacher Fields */}
+                {/* Teacher Fields - ONLY Employee ID */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Employee ID <span className="text-red-500">*</span>
@@ -128,9 +141,12 @@ const AddUserModal = ({ type: initialType = 'teacher', onClose, onCreate }) => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
                     placeholder="e.g., EMP-001" 
                   />
-                  <p className="text-xs text-gray-500 mt-1">Unique employee identifier</p>
+                  <p className="text-xs text-gray-500 mt-1">This will be used as the login credential</p>
                 </div>
-
+              </>
+            ) : (
+              <>
+                {/* Student Fields - ONLY Registration Number */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Registration Number <span className="text-red-500">*</span>
@@ -141,27 +157,9 @@ const AddUserModal = ({ type: initialType = 'teacher', onClose, onCreate }) => {
                     value={formData.registrationNumber} 
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-                    placeholder="e.g., TEACH-001" 
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Used for login</p>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Student Fields */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student ID / Registration Number <span className="text-red-500">*</span>
-                  </label>
-                  <input 
-                    name="registrationNumber" 
-                    required 
-                    value={formData.registrationNumber} 
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
                     placeholder="e.g., STU-2024-001" 
                   />
-                  <p className="text-xs text-gray-500 mt-1">This serves as both Student ID and Registration Number (used for login)</p>
+                  <p className="text-xs text-gray-500 mt-1">This will be used as the login credential</p>
                 </div>
               </>
             )}

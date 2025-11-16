@@ -114,39 +114,42 @@ const EditUserModal = ({ user, type, onClose, onSave, onResetPassword }) => {
               />
             </div>
 
-            {/* Registration Number */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Registration Number
-              </label>
-              <input
-                type="text"
-                name="registrationNumber"
-                required
-                value={formData.registrationNumber}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                placeholder="Registration number"
-                disabled
-              />
-              <p className="mt-1 text-xs text-gray-500">Registration number cannot be changed</p>
-            </div>
-
-            {/* Employee/Student ID */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {type === 'teacher' ? 'Employee ID' : 'Student ID'}
-              </label>
-              <input
-                type="text"
-                name={type === 'teacher' ? 'employeeId' : 'studentId'}
-                required
-                value={type === 'teacher' ? formData.employeeId : formData.studentId}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={`Enter ${type === 'teacher' ? 'employee' : 'student'} ID`}
-              />
-            </div>
+            {/* Employee ID for Teachers OR Registration Number for Students */}
+            {type === 'teacher' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee ID (Login Credential)
+                </label>
+                <input
+                  type="text"
+                  name="employeeId"
+                  required
+                  value={formData.employeeId}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                  placeholder="Employee ID"
+                  disabled
+                />
+                <p className="mt-1 text-xs text-gray-500">Employee ID cannot be changed (used for login)</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Registration Number (Login Credential)
+                </label>
+                <input
+                  type="text"
+                  name="registrationNumber"
+                  required
+                  value={formData.registrationNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                  placeholder="Registration number"
+                  disabled
+                />
+                <p className="mt-1 text-xs text-gray-500">Registration number cannot be changed (used for login)</p>
+              </div>
+            )}
 
             {/* Email */}
             <div>

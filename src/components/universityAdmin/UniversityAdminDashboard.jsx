@@ -183,7 +183,7 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
                 <div key={t.id} className="flex items-center justify-between p-3 rounded-md hover:bg-neutral-50 transition-colors">
                   <div className="min-w-0">
                     <div className="font-medium text-neutral-900 truncate">{t.name}</div>
-                    <div className="text-xs text-neutral-500 truncate">{t.registrationNumber} — {t.department}</div>
+                    <div className="text-xs text-neutral-500 truncate">{t.employeeId} — {t.department}</div>
                   </div>
                   <div className="flex gap-2 items-center ml-4">
                     <button onClick={() => handleOpenEdit(t, 'teacher')} className="px-2 py-1 border rounded text-sm">Edit</button>
