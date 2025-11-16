@@ -80,26 +80,42 @@ class AuthService {
         throw new Error('Registration number and password are required');
       }
 
-      // Get user by registration number
-      const result = await storageService.get(
-        `${STORAGE_KEYS.USER_PREFIX}${registrationNumber}`
-      );
+      // Get all users from admin service (centralized authentication)
+      const allUsers = await adminService.getAllUsers();
+      const userAuth = allUsers.find(u => u.registrationNumber === registrationNumber && u.password === password);
 
-      if (!result || !result.value) {
+      if (!userAuth) {
         throw new Error('Invalid registration number or password');
       }
 
-      const user = JSON.parse(result.value);
+      // Get full user details based on type
+      let user = null;
+      if (userAuth.userType === 'teacher') {
+        const teachers = await adminService.getTeachers(userAuth.university);
+        const teacher = teachers.find(t => t.employeeId === registrationNumber || t.registrationNumber === registrationNumber);
+        if (teacher && teacher.isActive) {
+          user = teacher;
+        } else if (teacher && !teacher.isActive) {
+          throw new Error('Your account has been deactivated. Please contact your administrator.');
+        }
+      } else if (userAuth.userType === 'student') {
+        const students = await adminService.getStudents(userAuth.university);
+        const student = students.find(s => s.registrationNumber === registrationNumber);
+        if (student && student.isActive) {
+          user = student;
+        } else if (student && !student.isActive) {
+          throw new Error('Your account has been deactivated. Please contact your administrator.');
+        }
+      }
+
+      if (!user) {
+        throw new Error('User account not found or has been removed');
+      }
 
       // Check university access
       const isAccessible = await adminService.isUniversityAccessible(user.university);
       if (!isAccessible) {
         throw new Error('Your university access has been suspended or expired. Please contact your institution administrator.');
-      }
-
-      // Verify password
-      if (user.password !== password) {
-        throw new Error('Invalid registration number or password');
       }
 
       // Save current session
