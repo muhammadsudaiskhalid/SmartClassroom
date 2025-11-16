@@ -29,20 +29,32 @@ export const ClassProvider = ({ children }) => {
 
     setLoading(true);
     try {
+      console.log('Loading data for user:', { 
+        name: currentUser.name, 
+        type: currentUser.type,
+        userType: currentUser.userType,
+        university: currentUser.university,
+        department: currentUser.department,
+        semester: currentUser.semester
+      });
+      
       let loadedClasses = [];
-      if (currentUser.type === 'teacher') {
+      if (currentUser.type === 'teacher' || currentUser.userType === 'teacher') {
         loadedClasses = await classService.getTeacherClasses(currentUser.id);
-      } else {
+        console.log('Loaded teacher classes:', loadedClasses.length);
+      } else if (currentUser.type === 'student' || currentUser.userType === 'student') {
         loadedClasses = await classService.getFilteredClasses(
           currentUser.university,
           currentUser.department,
           currentUser.semester
         );
+        console.log('Loaded student classes:', loadedClasses.length);
       }
       setClasses(loadedClasses);
 
-      if (currentUser.type === 'student') {
+      if (currentUser.type === 'student' || currentUser.userType === 'student') {
         const studentRequests = await studentService.getStudentRequests(currentUser.id);
+        console.log('Loaded student requests:', studentRequests.length);
         setRequests(studentRequests);
       }
     } catch (error) {
@@ -186,8 +198,13 @@ export const ClassProvider = ({ children }) => {
   };
 
   const getEnrolledClasses = () => {
-    if (!currentUser || currentUser.type !== 'student') return [];
-    return classes.filter(c => c.students && c.students.some(s => s.id === currentUser.id));
+    if (!currentUser || (currentUser.type !== 'student' && currentUser.userType !== 'student')) {
+      console.log('getEnrolledClasses: Not a student');
+      return [];
+    }
+    const enrolled = classes.filter(c => c.students && c.students.some(s => s.id === currentUser.id));
+    console.log('getEnrolledClasses: Found', enrolled.length, 'enrolled classes out of', classes.length, 'total');
+    return enrolled;
   };
 
   const value = {

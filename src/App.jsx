@@ -138,6 +138,7 @@ function App() {
 
   useEffect(() => {
     if (currentUser && !isAdminMode) {
+      console.log('User logged in, setting view to dashboard. User type:', currentUser.type, 'userType:', currentUser.userType);
       setView('dashboard');
     } else if (!currentUser && !isAdminMode && view !== 'admin-login') {
       setView('signin');
@@ -393,13 +394,22 @@ function App() {
   };
 
   const getStudentAvailableClasses = () => {
-    if (!currentUser || currentUser.type !== USER_TYPES.STUDENT) return [];
+    if (!currentUser || (currentUser.type !== USER_TYPES.STUDENT && currentUser.userType !== 'student')) {
+      console.log('getStudentAvailableClasses: Not a student or no user');
+      return [];
+    }
+    console.log('getStudentAvailableClasses: Returning', classes.length, 'classes');
     return classes;
   };
 
   const getStudentEnrolledClasses = () => {
-    if (!currentUser || currentUser.type !== USER_TYPES.STUDENT) return [];
-    return getEnrolledClasses();
+    if (!currentUser || (currentUser.type !== USER_TYPES.STUDENT && currentUser.userType !== 'student')) {
+      console.log('getStudentEnrolledClasses: Not a student or no user');
+      return [];
+    }
+    const enrolled = getEnrolledClasses();
+    console.log('getStudentEnrolledClasses: Returning', enrolled.length, 'enrolled classes');
+    return enrolled;
   };
 
   const getEnrolledClassIds = () => {
@@ -489,7 +499,7 @@ function App() {
           />
         )}
 
-        {view === 'dashboard' && currentUser.type === USER_TYPES.STUDENT && (
+        {view === 'dashboard' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
           <StudentDashboard
             user={currentUser}
             myClasses={getStudentEnrolledClasses()}
@@ -525,7 +535,7 @@ function App() {
           />
         )}
 
-        {view === 'class-detail' && currentUser.type === USER_TYPES.STUDENT && (
+        {view === 'class-detail' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
           <ClassView
             classData={selectedClass}
             minutes={classMinutes}
