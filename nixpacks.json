@@ -1,0 +1,24 @@
+{
+  "nixpacks": {
+    "phases": {
+      "setup": {
+        "nixPkgs": ["nodejs-18_x"]
+      },
+      "install": {
+        "cmds": [
+          "cd server",
+          "npm ci"
+        ]
+      },
+      "build": {
+        "cmds": [
+          "cd server",
+          "npx prisma generate"
+        ]
+      }
+    },
+    "start": {
+      "cmd": "cd server && npx prisma db push --accept-data-loss && node prisma/seed.js ; node index.js"
+    }
+  }
+}
