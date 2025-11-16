@@ -51,7 +51,8 @@ class AdminService {
         university: university,
         isActive: true,
         createdAt: new Date().toISOString(),
-        userType: 'teacher'
+        type: 'teacher', // Changed from userType to type for consistency
+        userType: 'teacher' // Keep for backward compatibility
       };
 
       teachers.push(newTeacher);
@@ -92,7 +93,8 @@ class AdminService {
         university: university,
         isActive: true,
         createdAt: new Date().toISOString(),
-        userType: 'student'
+        type: 'student', // Changed from userType to type for consistency
+        userType: 'student' // Keep for backward compatibility
       };
 
       students.push(newStudent);
