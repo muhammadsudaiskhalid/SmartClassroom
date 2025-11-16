@@ -9,7 +9,6 @@ import ClassDetail from './components/teacher/ClassDetail';
 import ClassView from './components/student/ClassView';
 import ProfileModal from './components/shared/ProfileModal';
 import AdminSignIn from './components/admin/AdminSignIn';
-import AdminDashboard from './components/admin/AdminDashboard';
 import SuperAdminDashboard from './components/admin/SuperAdminDashboard';
 import UniversityAdminDashboard from './components/universityAdmin/UniversityAdminDashboard';
 import { LoadingPage } from './components/shared/LoadingSpinner';
@@ -126,13 +125,21 @@ function App() {
     } else if (!currentUser && !isAdminMode && view !== 'admin-login') {
       setView('signin');
     }
+    // This effect intentionally omits `view` from its dependency list because
+    // we only want to react to changes in currentUser / isAdminMode here.
+    // Adding `view` causes unnecessary re-runs. Disable the ESLint rule with
+    // a clear justification.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isAdminMode]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedClass) {
       loadClassData();
     }
+    // loadClassData is declared inline and calling it from this effect is
+    // intentional. Wrapping loadClassData with useCallback adds noise; disable
+    // the exhaustive-deps check with justification.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass]);
 
   const loadClassData = async () => {

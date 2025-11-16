@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Button = ({ 
+const Button = React.memo(({ 
   children, 
   variant = 'primary', 
   size = 'md', 
@@ -12,7 +12,7 @@ const Button = ({
   type = 'button',
   className = ''
 }) => {
-  const baseClasses = 'btn inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = 'btn inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200';
   
   const variants = {
     primary: 'btn-primary',
@@ -43,6 +43,8 @@ const Button = ({
       {Icon && iconPosition === 'right' && <Icon size={18} />}
     </button>
   );
-};
+});
+
+Button.displayName = 'Button';
 
 export default Button;

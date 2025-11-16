@@ -51,3 +51,48 @@ export const debounce = (func, wait) => {
     timeout = setTimeout(later, wait);
   };
 };
+
+// Sanitize HTML to prevent XSS
+export const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  
+  // Remove HTML tags
+  const withoutTags = input.replace(/<[^>]*>/g, '');
+  
+  // Escape special characters
+  return withoutTags
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+};
+
+// Validate and sanitize email
+export const sanitizeEmail = (email) => {
+  if (typeof email !== 'string') return '';
+  return email.trim().toLowerCase();
+};
+
+// Safe string comparison (timing attack resistant)
+export const safeCompare = (a, b) => {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+};
+
+// Deep clone object
+export const deepClone = (obj) => {
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch (error) {
+    console.error('Error cloning object:', error);
+    return obj;
+  }
+};

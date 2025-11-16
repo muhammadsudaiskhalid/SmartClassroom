@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, AlertCircle } from 'lucide-react';
+import { DEPARTMENTS, SEMESTERS } from '../../utils/constants';
 
 const AddUserModal = ({ type = 'teacher', onClose, onCreate }) => {
   const [formData, setFormData] = useState({
@@ -13,21 +14,23 @@ const AddUserModal = ({ type = 'teacher', onClose, onCreate }) => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await onCreate({ ...formData, type });
       onClose();
     } catch (err) {
-      console.error('Failed to create user', err);
-      alert('Failed to create user');
+      setError(err.message || 'Failed to create user. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -73,25 +76,43 @@ const AddUserModal = ({ type = 'teacher', onClose, onCreate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-              <input name="department" required value={formData.department} onChange={handleChange}
-                className="w-full px-4 py-2.5 border rounded-lg" placeholder="Department" />
+              <select name="department" required value={formData.department} onChange={handleChange}
+                className="w-full px-4 py-2.5 border rounded-lg">
+                <option value="">Select Department</option>
+                {DEPARTMENTS.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
             </div>
 
             {type === 'student' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-                <input name="semester" required value={formData.semester} onChange={handleChange}
-                  className="w-full px-4 py-2.5 border rounded-lg" placeholder="e.g. 1st Semester" />
+                <select name="semester" required value={formData.semester} onChange={handleChange}
+                  className="w-full px-4 py-2.5 border rounded-lg">
+                  <option value="">Select Semester</option>
+                  {SEMESTERS.map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
               </div>
             )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
               <input name="password" type="password" required minLength={6} value={formData.password} onChange={handleChange}
-                className="w-full px-4 py-2.5 border rounded-lg" placeholder="Temporary password" />
+                className="w-full px-4 py-2.5 border rounded-lg" placeholder="Temporary password (min 6 characters)" />
+              <p className="text-xs text-gray-500 mt-1">User can change this password after first login</p>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2 text-red-800">
+                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg transition-colors">
               <Plus className="w-5 h-5" />
               {loading ? 'Creating...' : `Create ${type === 'teacher' ? 'Teacher' : 'Student'}`}
             </button>

@@ -14,6 +14,9 @@ const SuperAdminDashboard = ({ onLogout }) => {
 
   useEffect(() => {
     loadUniversities();
+    // loadUniversities is stable for this component; disable exhaustive-deps warning
+    // to avoid suggesting it as a dependency which would require useCallback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUniversities = async () => {

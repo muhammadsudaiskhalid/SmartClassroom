@@ -1,6 +1,6 @@
 import React from 'react';
 
-const LoadingSpinner = ({ size = 'md', className = '' }) => {
+const LoadingSpinner = React.memo(({ size = 'md', className = '' }) => {
   const sizes = {
     sm: 'w-4 h-4 border-2',
     md: 'w-8 h-8 border-3',
@@ -11,19 +11,25 @@ const LoadingSpinner = ({ size = 'md', className = '' }) => {
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <div 
-        className={`${sizes[size]} border-accent-200 border-t-accent-500 rounded-full animate-spin`}
+        className={`${sizes[size]} border-orange-200 border-t-orange-500 rounded-full animate-spin`}
+        role="status"
+        aria-label="Loading"
       />
     </div>
   );
-};
+});
 
-export const LoadingPage = ({ message = 'Loading...' }) => {
+LoadingSpinner.displayName = 'LoadingSpinner';
+
+export const LoadingPage = React.memo(({ message = 'Loading...' }) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-50">
       <LoadingSpinner size="xl" />
-      <p className="mt-4 text-neutral-600 text-lg">{message}</p>
+      <p className="mt-4 text-neutral-600 text-lg" role="status">{message}</p>
     </div>
   );
-};
+});
+
+LoadingPage.displayName = 'LoadingPage';
 
 export default LoadingSpinner;

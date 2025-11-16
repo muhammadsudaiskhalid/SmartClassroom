@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
 
-const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
+const Toast = React.memo(({ message, type = 'info', duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -69,6 +69,8 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
       </div>
     </div>
   );
-};
+});
+
+Toast.displayName = 'Toast';
 
 export default Toast;

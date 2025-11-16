@@ -18,6 +18,10 @@ export const ClassProvider = ({ children }) => {
       setClasses([]);
       setRequests([]);
     }
+    // loadData is declared inside the component and used here intentionally.
+    // We disable the exhaustive-deps rule to avoid requiring loadData to be
+    // included as a dependency (or wrapped in useCallback) for this simple case.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   const loadData = async () => {

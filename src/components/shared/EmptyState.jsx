@@ -1,7 +1,7 @@
 import React from 'react';
 import Button from './Button';
 
-const EmptyState = ({ 
+const EmptyState = React.memo(({ 
   icon: Icon, 
   title, 
   description, 
@@ -12,8 +12,8 @@ const EmptyState = ({
   return (
     <div className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className}`}>
       {Icon && (
-        <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
-          <Icon size={32} className="text-neutral-400" />
+        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+          <Icon size={32} className="text-orange-400" />
         </div>
       )}
       <h3 className="text-xl font-semibold text-neutral-900 mb-2">{title}</h3>
@@ -27,6 +27,8 @@ const EmptyState = ({
       )}
     </div>
   );
-};
+});
+
+EmptyState.displayName = 'EmptyState';
 
 export default EmptyState;
