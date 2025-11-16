@@ -1,5 +1,6 @@
 import storageService from './storage.service';
 import adminService from './admin.service';
+import securityService from './security.service';
 import { STORAGE_KEYS } from '../utils/constants';
 
 class AuthService {
@@ -80,13 +81,38 @@ class AuthService {
         throw new Error('Registration number and password are required');
       }
 
+      // Check rate limiting
+      const rateLimit = securityService.checkRateLimit(registrationNumber);
+      if (!rateLimit.allowed) {
+        if (rateLimit.locked) {
+          throw new Error(`Too many failed attempts. Please try again in ${Math.ceil(rateLimit.retryAfter / 60)} minutes.`);
+        }
+      }
+
       // Get all users from admin service (centralized authentication)
       const allUsers = await adminService.getAllUsers();
-      const userAuth = allUsers.find(u => u.registrationNumber === registrationNumber && u.password === password);
+      const userAuth = allUsers.find(u => u.registrationNumber === registrationNumber);
 
       if (!userAuth) {
         throw new Error('Invalid registration number or password');
       }
+
+      // Verify password - support both hashed and plain (for backward compatibility)
+      let passwordMatch = false;
+      if (userAuth.password.startsWith('$2a$') || userAuth.password.startsWith('$2b$')) {
+        // Hashed password
+        passwordMatch = await securityService.verifyPassword(password, userAuth.password);
+      } else {
+        // Plain text password (legacy) - will be migrated on next password change
+        passwordMatch = userAuth.password === password;
+      }
+
+      if (!passwordMatch) {
+        throw new Error('Invalid registration number or password');
+      }
+
+      // Reset rate limit on successful login
+      securityService.resetRateLimit(registrationNumber);
 
       // Get full user details based on type
       let user = null;

@@ -1,4 +1,5 @@
 import storageService from './storage.service';
+import securityService from './security.service';
 
 class AdminService {
   // Get all teachers for a university
@@ -40,6 +41,9 @@ class AdminService {
       const { university } = teacherData;
       const teachers = await this.getTeachers(university);
       
+      // Hash password before storing
+      const hashedPassword = await securityService.hashPassword(teacherData.password);
+      
       const newTeacher = {
         id: `T-${Date.now()}`,
         name: teacherData.name,
@@ -47,7 +51,7 @@ class AdminService {
         registrationNumber: teacherData.employeeId, // Same as employeeId for consistency
         department: teacherData.department,
         email: teacherData.email,
-        password: teacherData.password,
+        password: hashedPassword, // Store hashed password
         university: university,
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -62,7 +66,7 @@ class AdminService {
       const users = await this.getAllUsers();
       users.push({
         registrationNumber: newTeacher.employeeId, // Use employeeId for login
-        password: newTeacher.password,
+        password: hashedPassword, // Store hashed password
         userType: 'teacher',
         university: university,
         userId: newTeacher.id
@@ -82,6 +86,9 @@ class AdminService {
       const { university } = studentData;
       const students = await this.getStudents(university);
       
+      // Hash password before storing
+      const hashedPassword = await securityService.hashPassword(studentData.password);
+      
       const newStudent = {
         id: `S-${Date.now()}`,
         name: studentData.name,
@@ -89,7 +96,7 @@ class AdminService {
         department: studentData.department,
         semester: studentData.semester,
         email: studentData.email,
-        password: studentData.password,
+        password: hashedPassword, // Store hashed password
         university: university,
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -104,7 +111,7 @@ class AdminService {
       const users = await this.getAllUsers();
       users.push({
         registrationNumber: newStudent.registrationNumber,
-        password: newStudent.password,
+        password: hashedPassword, // Store hashed password
         userType: 'student',
         university: university,
         userId: newStudent.id
@@ -372,16 +379,19 @@ class AdminService {
   // Reset user password
   async resetPassword(userId, type, newPassword, university) {
     try {
+      // Hash the new password
+      const hashedPassword = await securityService.hashPassword(newPassword);
+      
       if (type === 'teacher') {
         const teachers = await this.getTeachers(university);
         const teacher = teachers.find(t => t.id === userId);
         if (teacher) {
-          await this.updateTeacher(userId, { password: newPassword }, university);
+          await this.updateTeacher(userId, { password: hashedPassword }, university);
           // Update in users collection
           const users = await this.getAllUsers();
           const updatedUsers = users.map(u => 
             u.registrationNumber === teacher.registrationNumber 
-              ? { ...u, password: newPassword } 
+              ? { ...u, password: hashedPassword } 
               : u
           );
           await storageService.set('all_users', JSON.stringify(updatedUsers), true);
@@ -390,12 +400,12 @@ class AdminService {
         const students = await this.getStudents(university);
         const student = students.find(s => s.id === userId);
         if (student) {
-          await this.updateStudent(userId, { password: newPassword }, university);
+          await this.updateStudent(userId, { password: hashedPassword }, university);
           // Update in users collection
           const users = await this.getAllUsers();
           const updatedUsers = users.map(u => 
             u.registrationNumber === student.registrationNumber 
-              ? { ...u, password: newPassword } 
+              ? { ...u, password: hashedPassword } 
               : u
           );
           await storageService.set('all_users', JSON.stringify(updatedUsers), true);
@@ -462,11 +472,14 @@ class AdminService {
       const result = await storageService.get('admins', true);
       const admins = result ? JSON.parse(result.value) : [];
       
+      // Hash password before storing
+      const hashedPassword = await securityService.hashPassword(adminData.password);
+      
       const newAdmin = {
         id: `ADMIN-${Date.now()}`,
         name: adminData.name,
         registrationNumber: adminData.registrationNumber,
-        password: adminData.password,
+        password: hashedPassword, // Store hashed password
         university: adminData.university,
         email: adminData.email,
         createdAt: new Date().toISOString(),
@@ -527,10 +540,19 @@ class AdminService {
   // Admin login (supports super-admin via constants or stored admins)
   async adminLogin(username, password, secretKey) {
     try {
-      // Allow super-admin via constants
+      // Check rate limiting
+      const rateLimit = securityService.checkRateLimit(`admin_${username}`);
+      if (!rateLimit.allowed) {
+        if (rateLimit.locked) {
+          throw new Error(`Too many failed attempts. Please try again in ${Math.ceil(rateLimit.retryAfter / 60)} minutes.`);
+        }
+      }
+
+      // Allow super-admin via constants (plain text for super admin only)
       try {
         const { ADMIN_CREDENTIALS } = await import('../utils/constants');
         if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+          securityService.resetRateLimit(`admin_${username}`);
           const session = { id: `super_${Date.now()}`, username, type: 'super_admin' };
           
           // Save to localStorage first (more reliable)
@@ -544,17 +566,34 @@ class AdminService {
         // ignore import errors
       }
 
-      // Fallback: try stored admins
-      const admin = await this.verifyAdmin(username, password);
+      // Fallback: try stored admins with hashed passwords
+      const result = await storageService.get('admins', true);
+      const admins = result ? JSON.parse(result.value) : [];
+      
+      const admin = admins.find(a => a.registrationNumber === username);
+      
       if (admin) {
-        const session = { id: admin.id, username: admin.registrationNumber, type: 'university_admin', university: admin.university };
-        
-        // Save to localStorage first (more reliable)
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('admin_session', JSON.stringify(session));
+        // Verify password - support both hashed and plain (for backward compatibility)
+        let passwordMatch = false;
+        if (admin.password.startsWith('$2a$') || admin.password.startsWith('$2b$')) {
+          // Hashed password
+          passwordMatch = await securityService.verifyPassword(password, admin.password);
+        } else {
+          // Plain text password (legacy)
+          passwordMatch = admin.password === password;
         }
-        await storageService.set('admin_session', JSON.stringify(session));
-        return session;
+
+        if (passwordMatch) {
+          securityService.resetRateLimit(`admin_${username}`);
+          const session = { id: admin.id, username: admin.registrationNumber, type: 'university_admin', university: admin.university };
+          
+          // Save to localStorage first (more reliable)
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('admin_session', JSON.stringify(session));
+          }
+          await storageService.set('admin_session', JSON.stringify(session));
+          return session;
+        }
       }
 
       throw new Error('Invalid admin credentials');
