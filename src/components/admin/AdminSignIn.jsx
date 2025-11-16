@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Shield, Lock, User, AlertCircle } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
-import { useNavigate } from 'react-router-dom';
 // ADMIN_CREDENTIALS not used here; credentials checked via adminService.adminLogin
 
 const AdminSignIn = ({ onSignIn }) => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     registrationNumber: '',
     password: ''
@@ -54,7 +52,6 @@ const AdminSignIn = ({ onSignIn }) => {
         }
 
         if (onSignIn) onSignIn(session);
-        navigate('/admin/dashboard');
         return;
       }
 
@@ -66,7 +63,6 @@ const AdminSignIn = ({ onSignIn }) => {
         const sessionObj = { id: admin.id, username: admin.registrationNumber, type: 'university_admin', university: admin.university };
         localStorage.setItem('admin_session', JSON.stringify(sessionObj));
         if (onSignIn) onSignIn(admin);
-        navigate('/admin/dashboard');
         return;
       }
 
@@ -229,12 +225,12 @@ const AdminSignIn = ({ onSignIn }) => {
 
           {/* Back to Main Login */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <button
-              onClick={() => navigate('/signin')}
-              className="w-full text-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            <a
+              href="/"
+              className="block w-full text-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               ← Back to main login
-            </button>
+            </a>
           </div>
         </div>
 

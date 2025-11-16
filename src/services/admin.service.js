@@ -497,6 +497,21 @@ class AdminService {
   // Check for an existing admin session (stored locally)
   async checkAdminSession() {
     try {
+      // Try localStorage first (faster and more reliable in production)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const sessionStr = localStorage.getItem('admin_session');
+        if (sessionStr) {
+          try {
+            return JSON.parse(sessionStr);
+          } catch (e) {
+            // Invalid JSON, clear it
+            localStorage.removeItem('admin_session');
+            return null;
+          }
+        }
+      }
+      
+      // Fallback to storage service
       const result = await storageService.get('admin_session');
       if (result && result.value) {
         return JSON.parse(result.value);
@@ -516,6 +531,11 @@ class AdminService {
         const { ADMIN_CREDENTIALS } = await import('../utils/constants');
         if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
           const session = { id: `super_${Date.now()}`, username, type: 'super_admin' };
+          
+          // Save to localStorage first (more reliable)
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('admin_session', JSON.stringify(session));
+          }
           await storageService.set('admin_session', JSON.stringify(session));
           return session;
         }
@@ -527,6 +547,11 @@ class AdminService {
       const admin = await this.verifyAdmin(username, password);
       if (admin) {
         const session = { id: admin.id, username: admin.registrationNumber, type: 'university_admin', university: admin.university };
+        
+        // Save to localStorage first (more reliable)
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('admin_session', JSON.stringify(session));
+        }
         await storageService.set('admin_session', JSON.stringify(session));
         return session;
       }
@@ -541,6 +566,11 @@ class AdminService {
   // Admin logout
   async adminLogout() {
     try {
+      // Clear from localStorage first
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('admin_session');
+        localStorage.removeItem('adminUser');
+      }
       await storageService.delete('admin_session');
       return true;
     } catch (error) {

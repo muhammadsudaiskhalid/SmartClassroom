@@ -54,27 +54,44 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkAdminAccess = async () => {
-  const { hash } = window.location;
-      
-      if (hash === '#admin' || hash === '#/admin') {
-        // Check for existing admin session
-        const session = await adminService.checkAdminSession();
-        if (session) {
-          setAdminSession(session);
-          setIsAdminMode(true);
-          setView('admin-dashboard');
+      try {
+        const { hash } = window.location;
+        
+        if (hash === '#admin' || hash === '#/admin') {
+          // Check for existing admin session with timeout
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 3000)
+          );
+          
+          const session = await Promise.race([
+            adminService.checkAdminSession(),
+            timeoutPromise
+          ]).catch(() => null);
+          
+          if (session) {
+            setAdminSession(session);
+            setIsAdminMode(true);
+            setView('admin-dashboard');
+          } else {
+            setIsAdminMode(false);
+            setView('admin-login');
+          }
         } else {
-          setIsAdminMode(false);
-          setView('admin-login');
+          // Regular user flow - quick check only
+          const session = await Promise.race([
+            adminService.checkAdminSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+          ]).catch(() => null);
+          
+          if (session) {
+            setAdminSession(session);
+          }
         }
-      } else {
-        // Regular user flow
-        const session = await adminService.checkAdminSession();
-        if (session) {
-          setAdminSession(session);
-        }
+      } catch (error) {
+        console.error('Error checking admin access:', error);
+      } finally {
+        setCheckingAdmin(false);
       }
-      setCheckingAdmin(false);
     };
 
     checkAdminAccess();
