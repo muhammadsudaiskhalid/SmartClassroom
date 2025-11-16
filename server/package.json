@@ -3,14 +3,21 @@
   "version": "1.0.0",
   "description": "Backend API for Smart Classroom with multi-tenant architecture",
   "main": "index.js",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "deploy": "prisma generate && prisma db push && node prisma/seed.js && node index.js"
   },
   "keywords": [
     "smartclassroom",
