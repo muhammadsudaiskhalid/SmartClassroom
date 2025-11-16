@@ -114,13 +114,28 @@ Smart Classroom is a modern, university-centric classroom management system desi
 - **Tailwind CSS** - Utility-first CSS framework
 - **Lucide React** - Icon library
 - **Context API** - State management
+- **Axios** - HTTP client for API calls
 
-### Backend/Storage
-- **window.storage API** - Persistent data storage (Claude.ai)
-- **localStorage** - Fallback storage for local development
+### Backend
+- **Node.js + Express** - REST API server
+- **PostgreSQL** - Production database
+- **Prisma ORM** - Type-safe database operations
+- **bcryptjs** - Password hashing (10 salt rounds)
+- **JWT** - Token-based authentication
+- **Multi-Tenant Architecture** - University data isolation
+
+### Security
+- **Password Hashing** - bcrypt with salt rounds
+- **JWT Authentication** - Secure token-based auth
+- **Rate Limiting** - Brute force protection (5 attempts/5min)
+- **SQL Injection Protection** - Prisma ORM
+- **CORS** - Cross-origin resource sharing
+- **Input Validation** - Request sanitization
 
 ### Development Tools
-- **Create React App** - Project setup
+- **Create React App** - Frontend setup
+- **Prisma Studio** - Database GUI
+- **Nodemon** - Backend auto-reload
 - **ES6+** - Modern JavaScript
 - **React Hooks** - Functional components
 
@@ -138,24 +153,67 @@ Smart Classroom is a modern, university-centric classroom management system desi
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/smart-classroom.git
-   cd smart-classroom
+   git clone https://github.com/muhammadsudaiskhalid/SmartClassroom.git
+   cd SmartClassroom
    ```
 
-2. **Install dependencies**
+2. **Backend Setup** (Required for database)
+
+   See **[server/QUICKSTART.md](server/QUICKSTART.md)** for detailed instructions.
+
    ```bash
-   npm install
+   # Quick start
+   cd server
+   setup.bat
    ```
 
-3. **Start development server**
+   This will:
+   - Install backend dependencies
+   - Setup PostgreSQL database
+   - Run migrations
+   - Seed demo data
+   - Start API server on port 5000
+
+3. **Frontend Setup**
+
+   ```bash
+   # Install frontend dependencies
+   cd ..
+   npm install
+
+   # Install API client
+   npm install axios
+
+   # Create environment file
+   echo REACT_APP_API_URL=http://localhost:5000/api > .env
+   ```
+
+4. **Start Development**
+
+   **Terminal 1 - Backend:**
+   ```bash
+   cd server
+   npm run dev
+   ```
+
+   **Terminal 2 - Frontend:**
    ```bash
    npm start
    ```
 
-4. **Open in browser**
+5. **Open in browser**
    ```
    http://localhost:3000
    ```
+
+### Important Documentation
+
+📚 **Before starting, read these guides:**
+
+- **[server/QUICKSTART.md](server/QUICKSTART.md)** - Step-by-step backend setup
+- **[BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)** - Connect React to API
+- **[DATABASE_SETUP_SUMMARY.md](DATABASE_SETUP_SUMMARY.md)** - Architecture overview
+- **[IMPLEMENTATION_CHECKLIST.md](IMPLEMENTATION_CHECKLIST.md)** - Complete setup checklist
 
 ### Build for Production
 
