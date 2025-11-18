@@ -348,20 +348,44 @@ app.post('/api/universities', authenticateToken, async (req, res) => {
 // ROUTES
 // ============================================
 
+// Health check (must be before other routes)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Smart Classroom API is running',
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Smart Classroom API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth/login',
+      adminAuth: '/api/auth/admin/login',
+      classes: '/api/classes',
+      universities: '/api/universities'
+    }
+  });
+});
+
 const classRoutes = require('./routes/classes');
 const userRoutes = require('./routes/users');
 
 app.use('/api/classes', authenticateToken, classRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// 404 handler
+// 404 handler (must be last)
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
 // Error handler
