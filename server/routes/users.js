@@ -1,346 +1,280 @@
-// User Management Routes (Admin only)
+// User Routes - Multi-tenant user management
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const prisma = require('../prisma/client');
+const { Teacher, Student, Admin, University } = require('../models');
 
-// Get all users in university (Admin only)
+// Get all users (Admin only)
 router.get('/', async (req, res) => {
   try {
     const { type, universityId } = req.user;
+    const { userType } = req.query; // 'teacher', 'student', or 'admin'
 
     if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    const where = type === 'super_admin' ? {} : { universityId };
+    const filter = type === 'super_admin' ? {} : { universityId };
 
-    const [teachers, students, admins] = await Promise.all([
-      prisma.teacher.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          employeeId: true,
-          registrationNumber: true,
-          email: true,
-          department: true,
-          isActive: true,
-          universityId: true,
-          createdAt: true
-        },
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.student.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          registrationNumber: true,
-          email: true,
-          department: true,
-          semester: true,
-          isActive: true,
-          universityId: true,
-          createdAt: true
-        },
-        orderBy: { createdAt: 'desc' }
-      }),
-      type === 'super_admin' ? prisma.admin.findMany({
-        select: {
-          id: true,
-          name: true,
-          registrationNumber: true,
-          email: true,
-          universityId: true,
-          createdAt: true
-        }
-      }) : []
-    ]);
+    let users;
+    
+    if (userType === 'teacher') {
+      users = await Teacher.find(filter)
+        .populate('universityId', 'name')
+        .select('-password')
+        .sort({ createdAt: -1 });
+    } else if (userType === 'student') {
+      users = await Student.find(filter)
+        .populate('universityId', 'name')
+        .select('-password')
+        .sort({ createdAt: -1 });
+    } else if (userType === 'admin') {
+      users = await Admin.find(filter)
+        .populate('universityId', 'name')
+        .select('-password')
+        .sort({ createdAt: -1 });
+    } else {
+      // Get all users
+      const [teachers, students, admins] = await Promise.all([
+        Teacher.find(filter).populate('universityId', 'name').select('-password'),
+        Student.find(filter).populate('universityId', 'name').select('-password'),
+        Admin.find(filter).populate('universityId', 'name').select('-password')
+      ]);
 
-    res.json({
-      teachers: teachers.map(t => ({ ...t, type: 'teacher', userType: 'teacher' })),
-      students: students.map(s => ({ ...s, type: 'student', userType: 'student' })),
-      admins: admins.map(a => ({ ...a, type: 'admin', userType: 'admin' }))
-    });
+      users = {
+        teachers: teachers.map(u => ({ ...u.toObject(), university: u.universityId })),
+        students: students.map(u => ({ ...u.toObject(), university: u.universityId })),
+        admins: admins.map(u => ({ ...u.toObject(), university: u.universityId }))
+      };
+      
+      return res.json(users);
+    }
+
+    res.json(users.map(u => ({
+      ...u.toObject(),
+      university: u.universityId
+    })));
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Create teacher (Admin only)
-router.post('/teachers', async (req, res) => {
+// Get user by ID
+router.get('/:id', async (req, res) => {
   try {
+    const { id } = req.params;
     const { type, universityId } = req.user;
+    const { userType } = req.query; // 'teacher', 'student', or 'admin'
 
     if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { name, employeeId, registrationNumber, email, department, phone, password, targetUniversityId } = req.body;
-
-    // Determine which university to add to
-    const targetUni = type === 'super_admin' && targetUniversityId ? targetUniversityId : universityId;
-
-    // Check if employeeId or registrationNumber already exists
-    const existing = await prisma.teacher.findFirst({
-      where: {
-        OR: [
-          { employeeId },
-          { registrationNumber }
-        ]
-      }
-    });
-
-    if (existing) {
-      return res.status(400).json({ error: 'Employee ID or Registration Number already exists' });
+    let user;
+    
+    if (userType === 'teacher') {
+      user = await Teacher.findById(id)
+        .populate('universityId', 'name')
+        .select('-password');
+    } else if (userType === 'student') {
+      user = await Student.findById(id)
+        .populate('universityId', 'name')
+        .select('-password');
+    } else if (userType === 'admin') {
+      user = await Admin.findById(id)
+        .populate('universityId', 'name')
+        .select('-password');
+    } else {
+      return res.status(400).json({ error: 'userType query parameter required' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-    const teacher = await prisma.teacher.create({
-      data: {
-        name,
-        employeeId,
-        registrationNumber,
-        email,
-        department,
-        phone,
-        password: hashedPassword,
-        universityId: targetUni
-      },
-      include: {
-        university: { select: { name: true } }
-      }
+    // Check university access
+    if (type === 'university_admin' && user.universityId._id.toString() !== universityId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json({
+      ...user.toObject(),
+      university: user.universityId
     });
-
-    // Remove password from response
-    const { password: _, ...teacherWithoutPassword } = teacher;
-    res.status(201).json({ ...teacherWithoutPassword, type: 'teacher', userType: 'teacher' });
   } catch (error) {
-    console.error('Create teacher error:', error);
+    console.error('Get user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Create student (Admin only)
-router.post('/students', async (req, res) => {
+// Create user (Admin only)
+router.post('/', async (req, res) => {
   try {
-    const { type, universityId } = req.user;
+    const { type, universityId: adminUniversityId } = req.user;
+    const { userType, universityId, ...userData } = req.body;
 
     if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { name, registrationNumber, email, department, semester, phone, password, targetUniversityId } = req.body;
+    // University admins can only create users in their university
+    const targetUniversityId = type === 'super_admin' ? universityId : adminUniversityId;
 
-    // Determine which university to add to
-    const targetUni = type === 'super_admin' && targetUniversityId ? targetUniversityId : universityId;
-
-    // Check if registrationNumber already exists
-    const existing = await prisma.student.findUnique({
-      where: { registrationNumber }
-    });
-
-    if (existing) {
-      return res.status(400).json({ error: 'Registration Number already exists' });
+    if (type === 'university_admin' && universityId && universityId !== adminUniversityId) {
+      return res.status(403).json({ error: 'Cannot create users for other universities' });
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    const student = await prisma.student.create({
-      data: {
-        name,
-        registrationNumber,
-        email,
-        department,
-        semester,
-        phone,
-        password: hashedPassword,
-        universityId: targetUni
-      },
-      include: {
-        university: { select: { name: true } }
+    let newUser;
+    
+    if (userType === 'teacher') {
+      // Check if employeeId already exists
+      const existing = await Teacher.findOne({ 
+        employeeId: userData.employeeId, 
+        universityId: targetUniversityId 
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Employee ID already exists' });
       }
-    });
 
-    // Remove password from response
-    const { password: _, ...studentWithoutPassword } = student;
-    res.status(201).json({ ...studentWithoutPassword, type: 'student', userType: 'student' });
+      newUser = await Teacher.create({
+        ...userData,
+        password: hashedPassword,
+        universityId: targetUniversityId,
+        isActive: true
+      });
+    } else if (userType === 'student') {
+      // Check if registrationNumber already exists
+      const existing = await Student.findOne({ 
+        registrationNumber: userData.registrationNumber, 
+        universityId: targetUniversityId 
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Registration number already exists' });
+      }
+
+      newUser = await Student.create({
+        ...userData,
+        password: hashedPassword,
+        universityId: targetUniversityId,
+        isActive: true
+      });
+    } else if (userType === 'admin') {
+      // Check if registrationNumber already exists
+      const existing = await Admin.findOne({ 
+        registrationNumber: userData.registrationNumber 
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Registration number already exists' });
+      }
+
+      newUser = await Admin.create({
+        ...userData,
+        password: hashedPassword,
+        universityId: targetUniversityId
+      });
+    } else {
+      return res.status(400).json({ error: 'Invalid userType' });
+    }
+
+    // Populate and return without password
+    const Model = userType === 'teacher' ? Teacher : userType === 'student' ? Student : Admin;
+    const populated = await Model.findById(newUser._id)
+      .populate('universityId', 'name')
+      .select('-password');
+
+    res.status(201).json({
+      ...populated.toObject(),
+      university: populated.universityId
+    });
   } catch (error) {
-    console.error('Create student error:', error);
+    console.error('Create user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Update user (Admin only)
-router.put('/:userType/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const { type, universityId } = req.user;
-    const { userType, id } = req.params;
+    const { id } = req.params;
+    const { type, universityId: adminUniversityId } = req.user;
+    const { userType, password, ...updateData } = req.body;
 
     if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    const updates = req.body;
-    delete updates.password; // Don't allow direct password updates
-    delete updates.id;
-    delete updates.universityId;
+    const Model = userType === 'teacher' ? Teacher : userType === 'student' ? Student : Admin;
+    const user = await Model.findById(id);
 
-    let updatedUser;
-
-    if (userType === 'teacher') {
-      const teacher = await prisma.teacher.findUnique({ where: { id } });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      if (type !== 'super_admin' && teacher.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      updatedUser = await prisma.teacher.update({
-        where: { id },
-        data: updates,
-        select: {
-          id: true,
-          name: true,
-          employeeId: true,
-          registrationNumber: true,
-          email: true,
-          department: true,
-          phone: true,
-          isActive: true,
-          universityId: true
-        }
-      });
-    } else if (userType === 'student') {
-      const student = await prisma.student.findUnique({ where: { id } });
-      if (!student) {
-        return res.status(404).json({ error: 'Student not found' });
-      }
-      if (type !== 'super_admin' && student.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      updatedUser = await prisma.student.update({
-        where: { id },
-        data: updates,
-        select: {
-          id: true,
-          name: true,
-          registrationNumber: true,
-          email: true,
-          department: true,
-          semester: true,
-          phone: true,
-          isActive: true,
-          universityId: true
-        }
-      });
-    } else {
-      return res.status(400).json({ error: 'Invalid user type' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ ...updatedUser, type: userType, userType });
+    // University admins can only update users in their university
+    if (type === 'university_admin' && user.universityId.toString() !== adminUniversityId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Update fields
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        user[key] = updateData[key];
+      }
+    });
+
+    // Update password if provided
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+
+    const populated = await Model.findById(id)
+      .populate('universityId', 'name')
+      .select('-password');
+
+    res.json({
+      ...populated.toObject(),
+      university: populated.universityId
+    });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Reset password (Admin only)
-router.post('/:userType/:id/reset-password', async (req, res) => {
+// Delete/Deactivate user (Admin only)
+router.delete('/:id', async (req, res) => {
   try {
-    const { type, universityId } = req.user;
-    const { userType, id } = req.params;
-    const { newPassword } = req.body;
+    const { id } = req.params;
+    const { type, universityId: adminUniversityId } = req.user;
+    const { userType } = req.query;
 
     if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const Model = userType === 'teacher' ? Teacher : userType === 'student' ? Student : Admin;
+    const user = await Model.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    if (userType === 'teacher') {
-      const teacher = await prisma.teacher.findUnique({ where: { id } });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      if (type !== 'super_admin' && teacher.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      await prisma.teacher.update({
-        where: { id },
-        data: { password: hashedPassword }
-      });
-    } else if (userType === 'student') {
-      const student = await prisma.student.findUnique({ where: { id } });
-      if (!student) {
-        return res.status(404).json({ error: 'Student not found' });
-      }
-      if (type !== 'super_admin' && student.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      await prisma.student.update({
-        where: { id },
-        data: { password: hashedPassword }
-      });
-    } else {
-      return res.status(400).json({ error: 'Invalid user type' });
+    // University admins can only delete users in their university
+    if (type === 'university_admin' && user.universityId.toString() !== adminUniversityId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json({ message: 'Password reset successfully' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    // Soft delete - set isActive to false
+    user.isActive = false;
+    await user.save();
 
-// Delete user (Admin only)
-router.delete('/:userType/:id', async (req, res) => {
-  try {
-    const { type, universityId } = req.user;
-    const { userType, id } = req.params;
-
-    if (type !== 'university_admin' && type !== 'super_admin') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    if (userType === 'teacher') {
-      const teacher = await prisma.teacher.findUnique({ where: { id } });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      if (type !== 'super_admin' && teacher.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      await prisma.teacher.delete({ where: { id } });
-    } else if (userType === 'student') {
-      const student = await prisma.student.findUnique({ where: { id } });
-      if (!student) {
-        return res.status(404).json({ error: 'Student not found' });
-      }
-      if (type !== 'super_admin' && student.universityId !== universityId) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      await prisma.student.delete({ where: { id } });
-    } else {
-      return res.status(400).json({ error: 'Invalid user type' });
-    }
-
-    res.json({ message: 'User deleted successfully' });
+    res.json({ message: 'User deactivated successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Internal server error' });

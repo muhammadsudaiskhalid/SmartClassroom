@@ -3,10 +3,21 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || process.env.DATABASE_URL;
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected successfully'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
+
+// Import Models
+const { University, Admin, Teacher, Student, Class, Enrollment, JoinRequest, Minute } = require('./models');
 
 // CORS Configuration for Production
 const corsOptions = {
@@ -18,9 +29,6 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-
-// Database placeholder - will use Prisma
-const prisma = require('./prisma/client');
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -100,19 +108,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Find user (teacher or student)
     const [teacher, student] = await Promise.all([
-      prisma.teacher.findFirst({
-        where: {
-          OR: [
-            { employeeId: registrationNumber },
-            { registrationNumber: registrationNumber }
-          ]
-        },
-        include: { university: true }
-      }),
-      prisma.student.findUnique({
-        where: { registrationNumber },
-        include: { university: true }
-      })
+      Teacher.findOne({
+        $or: [
+          { employeeId: registrationNumber },
+          { registrationNumber: registrationNumber }
+        ]
+      }).populate('universityId'),
+      Student.findOne({ registrationNumber }).populate('universityId')
     ]);
 
     const user = teacher || student;
@@ -126,7 +128,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Check if university is active
-    if (!user.university.isActive) {
+    if (!user.universityId.isActive) {
       return res.status(403).json({ error: 'University access has been suspended.' });
     }
 
@@ -142,9 +144,9 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       {
-        id: user.id,
+        id: user._id.toString(),
         type: teacher ? 'teacher' : 'student',
-        universityId: user.universityId,
+        universityId: user.universityId._id.toString(),
         registrationNumber: user.registrationNumber || user.employeeId
       },
       JWT_SECRET,
@@ -152,12 +154,14 @@ app.post('/api/auth/login', async (req, res) => {
     );
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    const userObject = user.toObject();
+    delete userObject.password;
 
     res.json({
       token,
       user: {
-        ...userWithoutPassword,
+        ...userObject,
+        university: user.universityId,
         type: teacher ? 'teacher' : 'student',
         userType: teacher ? 'teacher' : 'student'
       }
@@ -193,10 +197,7 @@ app.post('/api/auth/admin/login', async (req, res) => {
     }
 
     // Check university admin
-    const admin = await prisma.admin.findUnique({
-      where: { registrationNumber: username },
-      include: { university: true }
-    });
+    const admin = await Admin.findOne({ registrationNumber: username }).populate('universityId');
 
     if (!admin) {
       return res.status(401).json({ error: 'Invalid admin credentials' });
@@ -211,9 +212,9 @@ app.post('/api/auth/admin/login', async (req, res) => {
 
     const token = jwt.sign(
       {
-        id: admin.id,
+        id: admin._id.toString(),
         type: 'university_admin',
-        universityId: admin.universityId,
+        universityId: admin.universityId._id.toString(),
         username: admin.registrationNumber
       },
       JWT_SECRET,
@@ -223,8 +224,8 @@ app.post('/api/auth/admin/login', async (req, res) => {
     res.json({
       token,
       type: 'university_admin',
-      university: admin.university.name,
-      universityId: admin.universityId
+      university: admin.universityId.name,
+      universityId: admin.universityId._id.toString()
     });
   } catch (error) {
     console.error('Admin login error:', error);
@@ -240,29 +241,24 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
 
     if (req.user.type === 'university_admin') {
-      const admin = await prisma.admin.findUnique({
-        where: { id: req.user.id },
-        include: { university: true }
-      });
-      return res.json({ ...admin, type: 'university_admin' });
+      const admin = await Admin.findById(req.user.id).populate('universityId');
+      const adminObj = admin.toObject();
+      delete adminObj.password;
+      return res.json({ ...adminObj, type: 'university_admin' });
     }
 
     if (req.user.type === 'teacher') {
-      const teacher = await prisma.teacher.findUnique({
-        where: { id: req.user.id },
-        include: { university: true }
-      });
-      const { password: _, ...userWithoutPassword } = teacher;
-      return res.json({ ...userWithoutPassword, type: 'teacher', userType: 'teacher' });
+      const teacher = await Teacher.findById(req.user.id).populate('universityId');
+      const teacherObj = teacher.toObject();
+      delete teacherObj.password;
+      return res.json({ ...teacherObj, type: 'teacher', userType: 'teacher' });
     }
 
     if (req.user.type === 'student') {
-      const student = await prisma.student.findUnique({
-        where: { id: req.user.id },
-        include: { university: true }
-      });
-      const { password: _, ...userWithoutPassword } = student;
-      return res.json({ ...userWithoutPassword, type: 'student', userType: 'student' });
+      const student = await Student.findById(req.user.id).populate('universityId');
+      const studentObj = student.toObject();
+      delete studentObj.password;
+      return res.json({ ...studentObj, type: 'student', userType: 'student' });
     }
 
     res.status(404).json({ error: 'User not found' });
@@ -282,16 +278,29 @@ app.get('/api/universities', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const universities = await prisma.university.findMany({
-      include: {
-        _count: {
-          select: { teachers: true, students: true, classes: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const universities = await University.find().sort({ createdAt: -1 });
+    
+    // Get counts for each university
+    const universitiesWithCounts = await Promise.all(
+      universities.map(async (uni) => {
+        const [teacherCount, studentCount, classCount] = await Promise.all([
+          Teacher.countDocuments({ universityId: uni._id }),
+          Student.countDocuments({ universityId: uni._id }),
+          Class.countDocuments({ universityId: uni._id })
+        ]);
+        
+        return {
+          ...uni.toObject(),
+          _count: {
+            teachers: teacherCount,
+            students: studentCount,
+            classes: classCount
+          }
+        };
+      })
+    );
 
-    res.json(universities);
+    res.json(universitiesWithCounts);
   } catch (error) {
     console.error('Get universities error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -307,28 +316,24 @@ app.post('/api/universities', authenticateToken, async (req, res) => {
     const { name, contactEmail, contactPhone, subscriptionType, maxUsers, admin } = req.body;
 
     // Create university
-    const university = await prisma.university.create({
-      data: {
-        name,
-        contactEmail,
-        contactPhone,
-        subscriptionType: subscriptionType || 'trial',
-        maxUsers: maxUsers || 1000,
-        isActive: true
-      }
+    const university = await University.create({
+      name,
+      contactEmail,
+      contactPhone,
+      subscriptionType: subscriptionType || 'trial',
+      maxUsers: maxUsers || 1000,
+      isActive: true
     });
 
     // Create admin for university if provided
     if (admin && admin.registrationNumber && admin.password) {
       const hashedPassword = await bcrypt.hash(admin.password, 10);
-      await prisma.admin.create({
-        data: {
-          name: admin.name || `${name} Admin`,
-          registrationNumber: admin.registrationNumber,
-          email: admin.email || contactEmail,
-          password: hashedPassword,
-          universityId: university.id
-        }
+      await Admin.create({
+        name: admin.name || `${name} Admin`,
+        registrationNumber: admin.registrationNumber,
+        email: admin.email || contactEmail,
+        password: hashedPassword,
+        universityId: university._id
       });
     }
 

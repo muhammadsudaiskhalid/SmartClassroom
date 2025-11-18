@@ -1,7 +1,7 @@
 // Class Routes - Multi-tenant isolated
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma/client');
+const { Class, Teacher, Student, Enrollment, JoinRequest, Minute, University } = require('../models');
 
 // Middleware to ensure user belongs to university
 const ensureUniversityAccess = (req, res, next) => {
@@ -20,66 +20,107 @@ router.get('/', ensureUniversityAccess, async (req, res) => {
     
     if (type === 'teacher') {
       // Teacher sees their own classes
-      classes = await prisma.class.findMany({
-        where: {
-          teacherId: id,
-          universityId,
-          isActive: true
-        },
-        include: {
-          teacher: { select: { name: true, department: true } },
-          _count: {
-            select: { enrollments: true, joinRequests: { where: { status: 'pending' } } }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+      classes = await Class.find({
+        teacherId: id,
+        universityId,
+        isActive: true
+      })
+      .populate('teacherId', 'name department')
+      .sort({ createdAt: -1 });
+
+      // Add counts
+      const classesWithCounts = await Promise.all(
+        classes.map(async (cls) => {
+          const enrollmentCount = await Enrollment.countDocuments({ classId: cls._id });
+          const pendingRequestsCount = await JoinRequest.countDocuments({ 
+            classId: cls._id, 
+            status: 'pending' 
+          });
+          
+          return {
+            ...cls.toObject(),
+            teacher: cls.teacherId,
+            _count: {
+              enrollments: enrollmentCount,
+              joinRequests: pendingRequestsCount
+            }
+          };
+        })
+      );
+      
+      return res.json(classesWithCounts);
+      
     } else if (type === 'student') {
       // Student sees available classes and enrolled classes
+      const enrolledClassIds = await Enrollment.find({
+        studentId: id,
+        status: 'active'
+      }).distinct('classId');
+
       const [enrolledClasses, availableClasses] = await Promise.all([
-        prisma.class.findMany({
-          where: {
-            universityId,
-            isActive: true,
-            enrollments: {
-              some: {
-                studentId: id,
-                status: 'active'
-              }
-            }
-          },
-          include: {
-            teacher: { select: { name: true, department: true } },
-            _count: { select: { enrollments: true } }
-          }
-        }),
-        prisma.class.findMany({
-          where: {
-            universityId,
-            isActive: true,
-            enrollments: {
-              none: { studentId: id }
-            }
-          },
-          include: {
-            teacher: { select: { name: true, department: true } },
-            _count: { select: { enrollments: true } }
-          }
-        })
+        Class.find({
+          _id: { $in: enrolledClassIds },
+          universityId,
+          isActive: true
+        }).populate('teacherId', 'name department'),
+        
+        Class.find({
+          _id: { $nin: enrolledClassIds },
+          universityId,
+          isActive: true
+        }).populate('teacherId', 'name department')
       ]);
+
+      // Add counts
+      const enrolledWithCounts = await Promise.all(
+        enrolledClasses.map(async (cls) => {
+          const count = await Enrollment.countDocuments({ classId: cls._id });
+          return {
+            ...cls.toObject(),
+            teacher: cls.teacherId,
+            _count: { enrollments: count }
+          };
+        })
+      );
+
+      const availableWithCounts = await Promise.all(
+        availableClasses.map(async (cls) => {
+          const count = await Enrollment.countDocuments({ classId: cls._id });
+          return {
+            ...cls.toObject(),
+            teacher: cls.teacherId,
+            _count: { enrollments: count }
+          };
+        })
+      );
       
-      return res.json({ enrolledClasses, availableClasses });
+      return res.json({ 
+        enrolledClasses: enrolledWithCounts, 
+        availableClasses: availableWithCounts 
+      });
+      
     } else if (type === 'university_admin' || type === 'super_admin') {
       // Admin sees all classes in their university
-      classes = await prisma.class.findMany({
-        where: type === 'super_admin' ? {} : { universityId },
-        include: {
-          teacher: { select: { name: true, department: true } },
-          university: { select: { name: true } },
-          _count: { select: { enrollments: true } }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+      const filter = type === 'super_admin' ? {} : { universityId };
+      
+      classes = await Class.find(filter)
+        .populate('teacherId', 'name department')
+        .populate('universityId', 'name')
+        .sort({ createdAt: -1 });
+
+      const classesWithCounts = await Promise.all(
+        classes.map(async (cls) => {
+          const count = await Enrollment.countDocuments({ classId: cls._id });
+          return {
+            ...cls.toObject(),
+            teacher: cls.teacherId,
+            university: cls.universityId,
+            _count: { enrollments: count }
+          };
+        })
+      );
+      
+      return res.json(classesWithCounts);
     }
 
     res.json(classes);
@@ -95,40 +136,41 @@ router.get('/:id', ensureUniversityAccess, async (req, res) => {
     const { id } = req.params;
     const { universityId, type } = req.user;
 
-    const classData = await prisma.class.findUnique({
-      where: { id },
-      include: {
-        teacher: { select: { name: true, department: true, email: true } },
-        university: { select: { name: true } },
-        enrollments: {
-          include: {
-            student: {
-              select: { id: true, name: true, registrationNumber: true, email: true, department: true }
-            }
-          }
-        },
-        joinRequests: {
-          where: { status: 'pending' },
-          include: {
-            student: {
-              select: { id: true, name: true, registrationNumber: true, email: true, department: true }
-            }
-          }
-        },
-        _count: { select: { enrollments: true, minutes: true } }
-      }
-    });
+    const classData = await Class.findById(id)
+      .populate('teacherId', 'name department email')
+      .populate('universityId', 'name');
 
     if (!classData) {
       return res.status(404).json({ error: 'Class not found' });
     }
 
     // Check university access
-    if (type !== 'super_admin' && classData.universityId !== universityId) {
+    if (type !== 'super_admin' && classData.universityId._id.toString() !== universityId) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json(classData);
+    // Get enrollments
+    const enrollments = await Enrollment.find({ classId: id, status: 'active' })
+      .populate('studentId', 'name registrationNumber email department');
+
+    // Get join requests
+    const joinRequests = await JoinRequest.find({ classId: id })
+      .populate('studentId', 'name registrationNumber email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      ...classData.toObject(),
+      teacher: classData.teacherId,
+      university: classData.universityId,
+      enrollments: enrollments.map(e => ({
+        ...e.toObject(),
+        student: e.studentId
+      })),
+      joinRequests: joinRequests.map(jr => ({
+        ...jr.toObject(),
+        student: jr.studentId
+      }))
+    });
   } catch (error) {
     console.error('Get class error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -136,7 +178,7 @@ router.get('/:id', ensureUniversityAccess, async (req, res) => {
 });
 
 // Create class (Teacher only)
-router.post('/', ensureUniversityAccess, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { type, id, universityId } = req.user;
 
@@ -146,97 +188,101 @@ router.post('/', ensureUniversityAccess, async (req, res) => {
 
     const { name, subject, code, schedule } = req.body;
 
-    // Check if code already exists in this university
-    const existing = await prisma.class.findFirst({
-      where: { code, universityId }
-    });
-
+    // Check if class code already exists in university
+    const existing = await Class.findOne({ code, universityId });
     if (existing) {
       return res.status(400).json({ error: 'Class code already exists in your university' });
     }
 
-    const newClass = await prisma.class.create({
-      data: {
-        name,
-        subject,
-        code,
-        schedule,
-        teacherId: id,
-        universityId
-      },
-      include: {
-        teacher: { select: { name: true, department: true } }
-      }
+    const newClass = await Class.create({
+      name,
+      subject,
+      code,
+      schedule: schedule || null,
+      teacherId: id,
+      universityId,
+      isActive: true
     });
 
-    res.status(201).json(newClass);
+    const populated = await Class.findById(newClass._id)
+      .populate('teacherId', 'name department');
+
+    res.status(201).json({
+      ...populated.toObject(),
+      teacher: populated.teacherId
+    });
   } catch (error) {
     console.error('Create class error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Update class (Teacher only - their own class)
-router.put('/:id', ensureUniversityAccess, async (req, res) => {
+// Update class (Teacher only, their own class)
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, id: userId, universityId } = req.user;
+    const { type, id: userId } = req.user;
+    const { name, subject, code, schedule, isActive } = req.body;
 
-    if (type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can update classes' });
-    }
-
-    const classData = await prisma.class.findUnique({ where: { id } });
+    const classData = await Class.findById(id);
+    
     if (!classData) {
       return res.status(404).json({ error: 'Class not found' });
     }
 
-    if (classData.teacherId !== userId) {
-      return res.status(403).json({ error: 'You can only update your own classes' });
+    // Only teacher who created it can update
+    if (type === 'teacher' && classData.teacherId.toString() !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { name, subject, schedule, isActive } = req.body;
+    if (type !== 'teacher' && type !== 'university_admin' && type !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
-    const updatedClass = await prisma.class.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(subject && { subject }),
-        ...(schedule && { schedule }),
-        ...(isActive !== undefined && { isActive })
-      },
-      include: {
-        teacher: { select: { name: true, department: true } }
-      }
+    // Update fields
+    if (name !== undefined) classData.name = name;
+    if (subject !== undefined) classData.subject = subject;
+    if (code !== undefined) classData.code = code;
+    if (schedule !== undefined) classData.schedule = schedule;
+    if (isActive !== undefined) classData.isActive = isActive;
+
+    await classData.save();
+
+    const populated = await Class.findById(id).populate('teacherId', 'name department');
+
+    res.json({
+      ...populated.toObject(),
+      teacher: populated.teacherId
     });
-
-    res.json(updatedClass);
   } catch (error) {
     console.error('Update class error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Delete class (Teacher only - their own class)
-router.delete('/:id', ensureUniversityAccess, async (req, res) => {
+// Delete class
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { type, id: userId } = req.user;
 
-    if (type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can delete classes' });
-    }
-
-    const classData = await prisma.class.findUnique({ where: { id } });
+    const classData = await Class.findById(id);
+    
     if (!classData) {
       return res.status(404).json({ error: 'Class not found' });
     }
 
-    if (classData.teacherId !== userId) {
-      return res.status(403).json({ error: 'You can only delete your own classes' });
+    // Only teacher who created it or admin can delete
+    if (type === 'teacher' && classData.teacherId.toString() !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    await prisma.class.delete({ where: { id } });
+    if (type !== 'teacher' && type !== 'university_admin' && type !== 'super_admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    await Class.findByIdAndDelete(id);
+
     res.json({ message: 'Class deleted successfully' });
   } catch (error) {
     console.error('Delete class error:', error);
@@ -244,131 +290,200 @@ router.delete('/:id', ensureUniversityAccess, async (req, res) => {
   }
 });
 
-// Request to join class (Student only)
-router.post('/:id/join', ensureUniversityAccess, async (req, res) => {
+// Join request (Student)
+router.post('/:id/join', async (req, res) => {
   try {
-    const { id: classId } = req.params;
+    const { id } = req.params;
     const { type, id: studentId, universityId } = req.user;
 
     if (type !== 'student') {
       return res.status(403).json({ error: 'Only students can join classes' });
     }
 
-    // Check if class exists and is in same university
-    const classData = await prisma.class.findUnique({ where: { id: classId } });
+    const classData = await Class.findById(id);
+    
     if (!classData) {
       return res.status(404).json({ error: 'Class not found' });
     }
 
-    if (classData.universityId !== universityId) {
-      return res.status(403).json({ error: 'Cannot join classes from other universities' });
+    if (classData.universityId.toString() !== universityId) {
+      return res.status(403).json({ error: 'Cannot join class from different university' });
     }
 
     // Check if already enrolled
-    const enrolled = await prisma.enrollment.findUnique({
-      where: {
-        studentId_classId: { studentId, classId }
-      }
-    });
-
-    if (enrolled) {
+    const existing = await Enrollment.findOne({ studentId, classId: id });
+    if (existing) {
       return res.status(400).json({ error: 'Already enrolled in this class' });
     }
 
     // Check if request already exists
-    const existingRequest = await prisma.joinRequest.findUnique({
-      where: {
-        studentId_classId: { studentId, classId }
-      }
-    });
-
+    const existingRequest = await JoinRequest.findOne({ studentId, classId: id });
     if (existingRequest) {
-      if (existingRequest.status === 'pending') {
-        return res.status(400).json({ error: 'Join request already pending' });
-      } else if (existingRequest.status === 'rejected') {
-        // Update rejected request to pending
-        const updatedRequest = await prisma.joinRequest.update({
-          where: { id: existingRequest.id },
-          data: { status: 'pending' }
-        });
-        return res.json(updatedRequest);
-      }
+      return res.status(400).json({ error: 'Join request already exists' });
     }
 
-    // Create new join request
-    const joinRequest = await prisma.joinRequest.create({
-      data: {
-        studentId,
-        classId,
-        status: 'pending'
-      },
-      include: {
-        student: {
-          select: { name: true, registrationNumber: true, department: true }
-        },
-        class: {
-          select: { name: true, code: true }
-        }
-      }
+    const joinRequest = await JoinRequest.create({
+      studentId,
+      classId: id,
+      status: 'pending'
     });
 
     res.status(201).json(joinRequest);
   } catch (error) {
-    console.error('Join class error:', error);
+    console.error('Join request error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Approve/Reject join request (Teacher only)
-router.put('/:id/join-requests/:requestId', ensureUniversityAccess, async (req, res) => {
+// Approve/Reject join request (Teacher)
+router.put('/:classId/requests/:requestId', async (req, res) => {
   try {
-    const { id: classId, requestId } = req.params;
-    const { type, id: teacherId } = req.user;
+    const { classId, requestId } = req.params;
     const { status } = req.body; // 'approved' or 'rejected'
+    const { type, id: teacherId } = req.user;
 
     if (type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can approve/reject join requests' });
+      return res.status(403).json({ error: 'Only teachers can approve join requests' });
     }
 
-    // Check if class belongs to teacher
-    const classData = await prisma.class.findUnique({ where: { id: classId } });
-    if (!classData || classData.teacherId !== teacherId) {
-      return res.status(403).json({ error: 'You can only manage requests for your own classes' });
+    const classData = await Class.findById(classId);
+    
+    if (!classData) {
+      return res.status(404).json({ error: 'Class not found' });
     }
 
-    const joinRequest = await prisma.joinRequest.findUnique({
-      where: { id: requestId }
-    });
+    if (classData.teacherId.toString() !== teacherId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
-    if (!joinRequest) {
+    const joinRequest = await JoinRequest.findById(requestId);
+    
+    if (!joinRequest || joinRequest.classId.toString() !== classId) {
       return res.status(404).json({ error: 'Join request not found' });
     }
 
+    joinRequest.status = status;
+    await joinRequest.save();
+
+    // If approved, create enrollment
     if (status === 'approved') {
-      // Create enrollment
-      await prisma.enrollment.create({
-        data: {
-          studentId: joinRequest.studentId,
-          classId: joinRequest.classId,
-          status: 'active'
-        }
+      await Enrollment.create({
+        studentId: joinRequest.studentId,
+        classId,
+        status: 'active'
       });
     }
 
-    // Update request status
-    const updatedRequest = await prisma.joinRequest.update({
-      where: { id: requestId },
-      data: { status },
-      include: {
-        student: {
-          select: { name: true, registrationNumber: true }
-        }
-      }
+    res.json(joinRequest);
+  } catch (error) {
+    console.error('Update join request error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get students in class (Teacher)
+router.get('/:id/students', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, id: userId } = req.user;
+
+    const classData = await Class.findById(id);
+    
+    if (!classData) {
+      return res.status(404).json({ error: 'Class not found' });
+    }
+
+    // Teacher must own the class
+    if (type === 'teacher' && classData.teacherId.toString() !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const enrollments = await Enrollment.find({ classId: id, status: 'active' })
+      .populate('studentId', 'name registrationNumber email department phone');
+
+    const students = enrollments.map(e => e.studentId);
+
+    res.json(students);
+  } catch (error) {
+    console.error('Get students error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get minutes for a class
+router.get('/:id/minutes', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const minutes = await Minute.find({ classId: id })
+      .populate('studentId', 'name registrationNumber')
+      .populate('teacherId', 'name')
+      .sort({ date: -1 });
+
+    res.json(minutes.map(m => ({
+      ...m.toObject(),
+      student: m.studentId,
+      teacher: m.teacherId
+    })));
+  } catch (error) {
+    console.error('Get minutes error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add minutes (Teacher)
+router.post('/:id/minutes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, id: teacherId } = req.user;
+    const { studentId, date, duration, topic, description } = req.body;
+
+    if (type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can add minutes' });
+    }
+
+    const classData = await Class.findById(id);
+    
+    if (!classData) {
+      return res.status(404).json({ error: 'Class not found' });
+    }
+
+    if (classData.teacherId.toString() !== teacherId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Check if student is enrolled
+    const enrollment = await Enrollment.findOne({ 
+      studentId, 
+      classId: id, 
+      status: 'active' 
+    });
+    
+    if (!enrollment) {
+      return res.status(400).json({ error: 'Student not enrolled in this class' });
+    }
+
+    const minute = await Minute.create({
+      classId: id,
+      studentId,
+      teacherId,
+      date: new Date(date),
+      duration,
+      topic: topic || '',
+      description: description || ''
     });
 
-    res.json(updatedRequest);
+    const populated = await Minute.findById(minute._id)
+      .populate('studentId', 'name registrationNumber')
+      .populate('teacherId', 'name');
+
+    res.status(201).json({
+      ...populated.toObject(),
+      student: populated.studentId,
+      teacher: populated.teacherId
+    });
   } catch (error) {
-    console.error('Approve/reject join request error:', error);
+    console.error('Add minutes error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
