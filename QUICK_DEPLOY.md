@@ -28,9 +28,9 @@ FRONTEND_URL
 
 ```
 REACT_APP_API_URL
-https://your-backend-name.vercel.app
+https://smartclassroom-backend.vercel.app
 ```
-⚠️ Replace `your-backend-name` with YOUR actual backend URL!
+✅ **Your Backend URL:** https://smartclassroom-backend.vercel.app
 
 ---
 
