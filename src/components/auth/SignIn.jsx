@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CreditCard, Lock, AlertCircle } from 'lucide-react';
 import Button from '../shared/Button';
 import { isValidRegistrationNumber, isEmpty } from '../../utils/validators';
+import authService from '../../services/api-auth.service';
 
 const SignIn = ({ onSignIn, onSwitchToSignUp }) => {
   const [formData, setFormData] = useState({

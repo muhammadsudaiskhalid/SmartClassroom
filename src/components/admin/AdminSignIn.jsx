@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Lock, User, AlertCircle } from 'lucide-react';
-import { adminService } from '../../services/admin.service';
-// ADMIN_CREDENTIALS not used here; credentials checked via adminService.adminLogin
+import authService from '../../services/api-auth.service';
 
 const AdminSignIn = ({ onSignIn }) => {
   const [formData, setFormData] = useState({
@@ -18,57 +17,21 @@ const AdminSignIn = ({ onSignIn }) => {
     setLoading(true);
 
     try {
-      // Try adminLogin which supports super-admin and stored admins
-      let session = null;
-      try {
-        session = await adminService.adminLogin(
-          formData.registrationNumber,
-          formData.password,
-          secretKey
-        );
-      } catch (err) {
-        // adminLogin may throw if not found, we'll attempt verifyAdmin fallback
-        session = null;
-      }
+      // Use backend API for admin authentication
+      const admin = await authService.adminSignIn(
+        formData.registrationNumber,
+        formData.password
+      );
 
-      // If adminLogin returned a session, persist it and create adminUser record for downstream code
-      if (session) {
-        localStorage.setItem('admin_session', JSON.stringify(session));
-
-        // For university admins, try to fetch their record
-        let adminRecord = null;
-        if (session.type === 'university_admin') {
-          try {
-            adminRecord = await adminService.getAdminByRegNumber(session.username);
-          } catch (e) {
-            adminRecord = null;
-          }
-        } else if (session.type === 'super_admin') {
-          adminRecord = { id: session.id, registrationNumber: session.username, name: 'Super Admin', university: null, type: 'super_admin' };
-        }
-
-        if (adminRecord) {
-          localStorage.setItem('adminUser', JSON.stringify(adminRecord));
-        }
-
-        if (onSignIn) onSignIn(session);
-        return;
-      }
-
-      // fallback: try verifyAdmin directly (older stored-admin flow)
-      const admin = await adminService.verifyAdmin(formData.registrationNumber, formData.password);
       if (admin) {
         localStorage.setItem('adminUser', JSON.stringify(admin));
-        // also create a session entry for consistency
-        const sessionObj = { id: admin.id, username: admin.registrationNumber, type: 'university_admin', university: admin.university };
-        localStorage.setItem('admin_session', JSON.stringify(sessionObj));
         if (onSignIn) onSignIn(admin);
         return;
       }
 
       setError('Invalid credentials. Please check your registration number and password.');
     } catch (err) {
-      setError('An error occurred during sign in. Please try again.');
+      setError(err.message || 'An error occurred during sign in. Please try again.');
       console.error('Sign in error:', err);
     } finally {
       setLoading(false);

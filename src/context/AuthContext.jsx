@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import authService from '../services/auth.service';
+import authService from '../services/api-auth.service';
 
 const AuthContext = createContext(null);
 
@@ -13,8 +13,21 @@ export const AuthProvider = ({ children }) => {
 
   const loadSession = async () => {
     try {
-      const session = await authService.getCurrentSession();
-      setCurrentUser(session);
+      // First try to get from localStorage (fast check)
+      const user = authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        // Verify session in background
+        authService.getCurrentSession().then(verifiedUser => {
+          if (verifiedUser) {
+            setCurrentUser(verifiedUser);
+          }
+        }).catch(() => {
+          // Session invalid, clear it
+          authService.signOut();
+          setCurrentUser(null);
+        });
+      }
     } catch (error) {
       console.error('Load session error:', error);
     } finally {
@@ -28,35 +41,16 @@ export const AuthProvider = ({ children }) => {
     return user;
   };
 
-  const signUp = async (userData) => {
-    const user = await authService.signUp(userData);
-    await authService.saveSession(user);
-    setCurrentUser(user);
-    return user;
-  };
-
   const signOut = async () => {
-    await authService.signOut();
+    authService.signOut();
     setCurrentUser(null);
-  };
-
-  const updateProfile = async (updates) => {
-    if (!currentUser) throw new Error('No user logged in');
-    const updatedUser = await authService.updateProfile(
-      currentUser.registrationNumber,
-      updates
-    );
-    setCurrentUser(updatedUser);
-    return updatedUser;
   };
 
   const value = {
     currentUser,
     loading,
     signIn,
-    signUp,
     signOut,
-    updateProfile,
     isAuthenticated: !!currentUser
   };
 
