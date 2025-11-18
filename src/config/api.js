@@ -1,5 +1,11 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://smartclassroom-backend.vercel.app';
+
+// Debug: Log the API URL in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('API_BASE_URL:', API_BASE_URL);
+  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+}
 
 export const API_ENDPOINTS = {
   // Auth endpoints
