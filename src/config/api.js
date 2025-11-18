@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://smartclassroom-backend.vercel.app';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://smart-classroom-one.vercel.app';
 
 // Debug: Log the API URL in development
 if (process.env.NODE_ENV === 'development') {

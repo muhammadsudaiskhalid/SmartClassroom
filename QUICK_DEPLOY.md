@@ -28,9 +28,9 @@ FRONTEND_URL
 
 ```
 REACT_APP_API_URL
-https://smartclassroom-backend.vercel.app
+https://smart-classroom-one.vercel.app
 ```
-✅ **Your Backend URL:** https://smartclassroom-backend.vercel.app
+✅ **Your Backend URL:** https://smart-classroom-one.vercel.app
 
 ---
 
