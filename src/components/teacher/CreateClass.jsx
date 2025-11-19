@@ -114,7 +114,7 @@ const CreateClass = ({ isOpen, onClose, onCreate, userUniversity, userDepartment
           <div className="flex items-center gap-2 text-sm mb-2">
             <Building2 size={16} className="text-accent-600" />
             <span className="font-medium text-accent-900">University:</span>
-            <span className="text-accent-700">{userUniversity}</span>
+            <span className="text-accent-700">{userUniversity || 'University'}</span>
           </div>
           <p className="text-xs text-accent-600">
             This class will be visible to students from the selected departments and semester.

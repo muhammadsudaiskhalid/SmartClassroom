@@ -19,7 +19,7 @@ const TeacherDashboard = ({
     <>
       <Header
         title="My Classes"
-        subtitle={`${user.university} • ${user.department} • ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+        subtitle={`${user.university?.name || user.universityId?.name || 'University'} • ${user.department} • ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
         action={
           <Button
             variant="primary"
@@ -57,7 +57,7 @@ const TeacherDashboard = ({
         isOpen={showCreateClass}
         onClose={() => setShowCreateClass(false)}
         onCreate={onCreateClass}
-        userUniversity={user.university}
+        userUniversity={user.university?.name || user.universityId?.name || 'University'}
         userDepartment={user.department}
       />
     </>

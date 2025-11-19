@@ -7,5 +7,6 @@ module.exports = {
   Class: require('./Class'),
   Enrollment: require('./Enrollment'),
   JoinRequest: require('./JoinRequest'),
-  Minute: require('./Minute')
+  Minute: require('./Minute'),
+  ChatMessage: require('./ChatMessage')
 };

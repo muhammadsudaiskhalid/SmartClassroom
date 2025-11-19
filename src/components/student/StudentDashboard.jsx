@@ -26,7 +26,7 @@ const StudentDashboard = ({
     <>
       <Header
         title="Student Dashboard"
-        subtitle={`${user.university} • ${user.department} • ${user.semester} • Enrolled in ${myClasses.length} ${myClasses.length === 1 ? 'class' : 'classes'}`}
+        subtitle={`${user.university?.name || 'University'} • ${user.department} • ${user.semester} • Enrolled in ${myClasses.length} ${myClasses.length === 1 ? 'class' : 'classes'}`}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

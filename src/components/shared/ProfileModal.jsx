@@ -83,7 +83,7 @@ const ProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
           </div>
           <div>
             <p className="text-xs text-neutral-600 mb-1">University</p>
-            <p className="text-sm font-medium text-neutral-900">{user?.university}</p>
+            <p className="text-sm font-medium text-neutral-900">{user?.university?.name || user?.universityId?.name || user?.university || 'University'}</p>
           </div>
           <div>
             <p className="text-xs text-neutral-600 mb-1">Account Type</p>

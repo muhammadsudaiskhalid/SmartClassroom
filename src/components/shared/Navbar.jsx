@@ -64,7 +64,7 @@ const Navbar = ({ user, onLogout, onEditProfile }) => {
                   <div className="px-4 py-3 border-b border-neutral-200 space-y-2">
                     <div className="flex items-start gap-2 text-xs">
                       <Building2 size={14} className="text-neutral-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-neutral-600">{user?.university}</p>
+                      <p className="text-neutral-600">{user?.university?.name || user?.universityId?.name || user?.university || 'University'}</p>
                     </div>
                     <div className="flex items-start gap-2 text-xs">
                       <BookOpen size={14} className="text-neutral-400 mt-0.5 flex-shrink-0" />

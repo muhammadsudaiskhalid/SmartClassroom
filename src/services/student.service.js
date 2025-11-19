@@ -15,8 +15,6 @@ class StudentService {
 
       const requestId = `${STORAGE_KEYS.REQUEST_PREFIX}${classId}:${studentId}`;
 
-      console.log('Creating join request with ID:', requestId);
-
       // Check if request already exists
       try {
         const existingRequest = await storageService.get(requestId, true);
@@ -41,8 +39,6 @@ class StudentService {
         createdAt: new Date().toISOString()
       };
 
-      console.log('Saving join request:', request);
-
       // Save as shared (visible to teacher)
       const result = await storageService.set(
         requestId,
@@ -53,8 +49,6 @@ class StudentService {
       if (!result) {
         throw new Error('Failed to create join request');
       }
-
-      console.log('Join request created successfully');
 
       return request;
     } catch (error) {

@@ -47,7 +47,7 @@ const ClassCard = ({ classData, onClick }) => {
         {/* University & Departments Badge */}
         <div className="mt-3 pt-3 border-t border-neutral-200">
           <p className="text-xs text-neutral-500 truncate">
-            {classData.university}
+            {classData.university?.name || classData.university || 'University'}
           </p>
           <div className="flex flex-wrap gap-1 mt-1">
             {Array.isArray(classData.departments) ? (

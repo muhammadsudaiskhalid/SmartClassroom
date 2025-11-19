@@ -4,9 +4,12 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // MongoDB Connection
@@ -17,7 +20,7 @@ mongoose.connect(MONGODB_URI)
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Import Models
-const { University, Admin, Teacher, Student, Class, Enrollment, JoinRequest, Minute } = require('./models');
+const { University, Admin, Teacher, Student, Class, Enrollment, JoinRequest, Minute, ChatMessage } = require('./models');
 
 // CORS Configuration for Production
 const corsOptions = {
@@ -57,6 +60,169 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Socket.IO Configuration
+const io = new Server(server, {
+  cors: {
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      const allowedOrigin = process.env.FRONTEND_URL;
+      if (allowedOrigin && (origin === allowedOrigin || allowedOrigin === '*')) {
+        return callback(null, true);
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+  }
+});
+
+// Socket.IO Authentication Middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication error'));
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    socket.userId = decoded.id;
+    socket.userType = decoded.type;
+    socket.universityId = decoded.universityId;
+    
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
+});
+
+// Socket.IO Connection Handler
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.userId} (${socket.userType})`);
+
+  // Join class chat room
+  socket.on('join-class-chat', async (classId) => {
+    try {
+      // Verify user has access to this class
+      const classData = await Class.findById(classId);
+      if (!classData) return;
+
+      if (socket.userType === 'teacher' && classData.teacherId.toString() === socket.userId) {
+        socket.join(`class_${classId}`);
+        console.log(`Teacher ${socket.userId} joined class chat ${classId}`);
+      } else if (socket.userType === 'student') {
+        const enrollment = await Enrollment.findOne({ 
+          studentId: socket.userId, 
+          classId: classId, 
+          status: 'approved' 
+        });
+        if (enrollment) {
+          socket.join(`class_${classId}`);
+          console.log(`Student ${socket.userId} joined class chat ${classId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error joining class chat:', error);
+    }
+  });
+
+  // Leave class chat room
+  socket.on('leave-class-chat', (classId) => {
+    socket.leave(`class_${classId}`);
+    console.log(`User ${socket.userId} left class chat ${classId}`);
+  });
+
+  // Send message
+  socket.on('send-message', async (data) => {
+    try {
+      const { classId, message } = data;
+      
+      // Verify user has access to this class
+      const classData = await Class.findById(classId);
+      if (!classData) return;
+
+      let hasAccess = false;
+      let senderInfo = {};
+
+      if (socket.userType === 'teacher' && classData.teacherId.toString() === socket.userId) {
+        hasAccess = true;
+        const teacher = await Teacher.findById(socket.userId);
+        senderInfo = {
+          id: socket.userId,
+          type: 'Teacher',
+          name: teacher.name,
+          registrationNumber: teacher.employeeId || teacher.registrationNumber
+        };
+      } else if (socket.userType === 'student') {
+        const enrollment = await Enrollment.findOne({ 
+          studentId: socket.userId, 
+          classId: classId, 
+          status: 'approved' 
+        });
+        if (enrollment) {
+          hasAccess = true;
+          const student = await Student.findById(socket.userId);
+          senderInfo = {
+            id: socket.userId,
+            type: 'Student',
+            name: student.name,
+            registrationNumber: student.registrationNumber
+          };
+        }
+      }
+
+      if (!hasAccess) return;
+
+      // Create and save the message
+      const chatMessage = await ChatMessage.create({
+        classId,
+        sender: senderInfo,
+        message,
+        messageType: 'text'
+      });
+
+      // Populate the message for broadcast
+      const populatedMessage = await ChatMessage.findById(chatMessage._id);
+
+      // Broadcast to class room
+      io.to(`class_${classId}`).emit('new-message', populatedMessage);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+
+  // Mark messages as read
+  socket.on('mark-as-read', async (data) => {
+    try {
+      const { messageId } = data;
+      
+      await ChatMessage.findByIdAndUpdate(messageId, {
+        $addToSet: {
+          readBy: {
+            userId: socket.userId,
+            readAt: new Date()
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.userId}`);
+  });
+});
 
 // Debug middleware to log requests in development
 if (process.env.NODE_ENV !== 'production') {
@@ -411,9 +577,11 @@ app.get('/', (req, res) => {
 
 const classRoutes = require('./routes/classes');
 const userRoutes = require('./routes/users');
+const chatRoutes = require('./routes/chat');
 
 app.use('/api/classes', authenticateToken, classRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/chat', authenticateToken, chatRoutes);
 
 // 404 handler (must be last)
 app.use((req, res) => {
@@ -431,7 +599,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
 });

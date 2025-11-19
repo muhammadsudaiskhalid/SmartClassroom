@@ -107,7 +107,7 @@ export const MESSAGES = {
 // Admin Configuration
 export const ADMIN_CREDENTIALS = {
   username: 'superadmin',
-  password: 'admin@iamsudaiskhalid', // Change this to a strong password
+  password: 'superadmin@iamsudaiskhalid', // Updated to match backend .env file
   secretKey: 'thisissmartclassroom.sudaiskhalid' // Additional security layer
 };
 

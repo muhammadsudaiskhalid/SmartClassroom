@@ -29,32 +29,20 @@ export const ClassProvider = ({ children }) => {
 
     setLoading(true);
     try {
-      console.log('Loading data for user:', { 
-        name: currentUser.name, 
-        type: currentUser.type,
-        userType: currentUser.userType,
-        university: currentUser.university,
-        department: currentUser.department,
-        semester: currentUser.semester
-      });
-      
       let loadedClasses = [];
       if (currentUser.type === 'teacher' || currentUser.userType === 'teacher') {
         loadedClasses = await classService.getTeacherClasses(currentUser.id);
-        console.log('Loaded teacher classes:', loadedClasses.length);
       } else if (currentUser.type === 'student' || currentUser.userType === 'student') {
         loadedClasses = await classService.getFilteredClasses(
-          currentUser.university,
+          currentUser.university?.name || currentUser.universityId?.name || currentUser.university,
           currentUser.department,
           currentUser.semester
         );
-        console.log('Loaded student classes:', loadedClasses.length);
       }
       setClasses(loadedClasses);
 
       if (currentUser.type === 'student' || currentUser.userType === 'student') {
         const studentRequests = await studentService.getStudentRequests(currentUser.id);
-        console.log('Loaded student requests:', studentRequests.length);
         setRequests(studentRequests);
       }
     } catch (error) {
@@ -70,7 +58,7 @@ export const ClassProvider = ({ children }) => {
       ...classData,
       teacherId: currentUser.id,
       teacherName: currentUser.name,
-      university: currentUser.university
+      university: currentUser.university?.name || currentUser.universityId?.name || currentUser.university
     });
     setClasses(prev => [...prev, newClass]);
     return newClass;
@@ -199,12 +187,9 @@ export const ClassProvider = ({ children }) => {
 
   const getEnrolledClasses = () => {
     if (!currentUser || (currentUser.type !== 'student' && currentUser.userType !== 'student')) {
-      console.log('getEnrolledClasses: Not a student');
       return [];
     }
-    const enrolled = classes.filter(c => c.students && c.students.some(s => s.id === currentUser.id));
-    console.log('getEnrolledClasses: Found', enrolled.length, 'enrolled classes out of', classes.length, 'total');
-    return enrolled;
+    return classes.filter(c => c.students && c.students.some(s => s.id === currentUser.id));
   };
 
   const value = {

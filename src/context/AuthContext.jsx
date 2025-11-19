@@ -46,11 +46,20 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
+  const updateProfile = async (updates) => {
+    // Update user profile locally and in storage
+    const updatedUser = { ...currentUser, ...updates };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    return updatedUser;
+  };
+
   const value = {
     currentUser,
     loading,
     signIn,
     signOut,
+    updateProfile,
     isAuthenticated: !!currentUser
   };
 

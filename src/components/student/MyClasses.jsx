@@ -89,7 +89,7 @@ const MyClasses = ({ classes, onSelectClass, onLeaveClass }) => {
               {/* University Badge */}
               <div className="mt-3 pt-3 border-t border-neutral-200">
                 <p className="text-xs text-neutral-500 truncate">
-                  {classData.university} • {classData.department}
+                  {classData.university?.name || classData.university || 'University'} • {classData.department}
                 </p>
               </div>
             </div>

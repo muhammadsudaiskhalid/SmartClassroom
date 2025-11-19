@@ -210,7 +210,6 @@ class StorageService {
           }
         }
       }
-      console.log('Initialized storage from localStorage');
     } catch (error) {
       console.error('Error initializing from localStorage:', error);
     }
@@ -226,7 +225,6 @@ class StorageService {
     } catch (e) {
       console.warn('localStorage not available');
     }
-    console.log('Storage cleared');
   }
 }
 

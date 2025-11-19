@@ -65,7 +65,7 @@ const AvailableClasses = ({
             <div className="mb-4 p-2 bg-neutral-50 rounded-lg">
               <p className="text-xs text-neutral-600 flex items-center gap-1 mb-1">
                 <Building2 size={12} />
-                <span className="truncate">{classData.university}</span>
+                <span className="truncate">{classData.university?.name || classData.university || 'University'}</span>
               </p>
               <div className="flex flex-wrap gap-1">
                 {Array.isArray(classData.departments) ? (

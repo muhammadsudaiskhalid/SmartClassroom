@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Users, UserPlus, FileText, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Users, UserPlus, FileText, Trash2, MessageSquare } from 'lucide-react';
 import Button from '../shared/Button';
 import MinuteCard from '../shared/MinuteCard';
 import DatePicker from '../shared/DatePicker';
@@ -7,6 +7,7 @@ import EmptyState from '../shared/EmptyState';
 import AddMinutes from './AddMinutes';
 import JoinRequestsList from './JoinRequestsList';
 import StudentsList from './StudentsList';
+import ClassChat from '../shared/ClassChat';
 import { getCurrentDate } from '../../utils/dateFormatter';
 
 const ClassDetail = ({ 
@@ -29,6 +30,7 @@ const ClassDetail = ({
   const [selectedDate, setSelectedDate] = useState(getCurrentDate());
   const [expandedMinute, setExpandedMinute] = useState(null);
   const [filteredMinutes, setFilteredMinutes] = useState([]);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'minutes') {
@@ -40,7 +42,8 @@ const ClassDetail = ({
   const tabs = [
     { id: 'minutes', label: 'Class Minutes', icon: FileText, count: minutes.length },
     { id: 'students', label: 'Students', icon: Users, count: classData.students?.length || 0 },
-    { id: 'requests', label: 'Join Requests', icon: UserPlus, count: requests.length }
+    { id: 'requests', label: 'Join Requests', icon: UserPlus, count: requests.length },
+    { id: 'chat', label: 'Class Chat', icon: MessageSquare, count: 0 }
   ];
 
   const handleEditMinute = (minute) => {
@@ -199,7 +202,33 @@ const ClassDetail = ({
             loading={loading}
           />
         )}
+
+        {activeTab === 'chat' && (
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <div className="text-center">
+              <MessageSquare size={48} className="mx-auto mb-4 text-accent-500" />
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Class Chat</h3>
+              <p className="text-neutral-600 mb-4">
+                Real-time chat with your students. Use the floating chat button to start messaging.
+              </p>
+              <Button
+                onClick={() => setShowChat(true)}
+                variant="primary"
+                icon={MessageSquare}
+              >
+                Open Class Chat
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Floating Chat Component */}
+      <ClassChat
+        classId={classData.id}
+        isOpen={showChat}
+        onToggle={() => setShowChat(!showChat)}
+      />
 
       {/* Add/Edit Minutes Modal */}
       <AddMinutes

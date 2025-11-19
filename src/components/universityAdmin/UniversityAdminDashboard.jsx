@@ -155,7 +155,7 @@ const UniversityAdminDashboard = ({ adminSession, onLogout }) => {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b p-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-orange-500">{university}</h1>
+          <h1 className="text-2xl font-bold text-orange-500">{university?.name || 'University Admin'}</h1>
           <p className="text-sm text-orange-400">Admin Portal — Manage teachers, students and requests</p>
         </div>
         <div className="flex items-center gap-3">

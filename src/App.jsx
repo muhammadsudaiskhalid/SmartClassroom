@@ -15,13 +15,14 @@ import { LoadingPage } from './components/shared/LoadingSpinner';
 import ToastContainer, { showToast } from './components/shared/ToastContainer';
 import { useAuthContext } from './context/AuthContext';
 import { useClassContext } from './context/ClassContext';
+import { SocketProvider } from './context/SocketContext';
 import adminService from './services/admin.service';
 import minutesService from './services/minutes.service';
 import { USER_TYPES } from './utils/constants';
 import './styles/globals.css';
 
 function App() {
-  const { currentUser, loading: authLoading, signIn, signUp, signOut, updateProfile } = useAuthContext();
+  const { currentUser, loading: authLoading, signIn, signOut, updateProfile } = useAuthContext();
   const { 
     classes, 
     requests,
@@ -138,7 +139,6 @@ function App() {
 
   useEffect(() => {
     if (currentUser && !isAdminMode) {
-      console.log('User logged in, setting view to dashboard. User type:', currentUser.type, 'userType:', currentUser.userType);
       setView('dashboard');
     } else if (!currentUser && !isAdminMode && view !== 'admin-login') {
       setView('signin');
@@ -183,16 +183,6 @@ function App() {
       showToast('Welcome back!', 'success');
     } catch (error) {
       showToast(error.message || 'Sign in failed', 'error');
-      throw error;
-    }
-  };
-
-  const handleSignUp = async (formData) => {
-    try {
-      await signUp(formData);
-      showToast('Account created successfully!', 'success');
-    } catch (error) {
-      showToast(error.message || 'Sign up failed', 'error');
       throw error;
     }
   };
@@ -395,21 +385,16 @@ function App() {
 
   const getStudentAvailableClasses = () => {
     if (!currentUser || (currentUser.type !== USER_TYPES.STUDENT && currentUser.userType !== 'student')) {
-      console.log('getStudentAvailableClasses: Not a student or no user');
       return [];
     }
-    console.log('getStudentAvailableClasses: Returning', classes.length, 'classes');
     return classes;
   };
 
   const getStudentEnrolledClasses = () => {
     if (!currentUser || (currentUser.type !== USER_TYPES.STUDENT && currentUser.userType !== 'student')) {
-      console.log('getStudentEnrolledClasses: Not a student or no user');
       return [];
     }
-    const enrolled = getEnrolledClasses();
-    console.log('getStudentEnrolledClasses: Returning', enrolled.length, 'enrolled classes');
-    return enrolled;
+    return getEnrolledClasses();
   };
 
   const getEnrolledClassIds = () => {
@@ -472,7 +457,6 @@ function App() {
             />
           ) : (
             <SignUp
-              onSignUp={handleSignUp}
               onSwitchToSignIn={() => setView('signin')}
             />
           )}
@@ -484,76 +468,78 @@ function App() {
   return (
     <>
       <ToastContainer />
-      <MainLayout 
-        user={currentUser} 
-        onLogout={handleLogout}
-        onEditProfile={() => setShowProfileModal(true)}
-      >
-        {view === 'dashboard' && currentUser.type === USER_TYPES.TEACHER && (
-          <TeacherDashboard
-            user={currentUser}
-            classes={classes}
-            onCreateClass={handleCreateClass}
-            onSelectClass={handleSelectClass}
-            loading={classLoading || actionLoading}
-          />
-        )}
+      <SocketProvider>
+        <MainLayout 
+          user={currentUser} 
+          onLogout={handleLogout}
+          onEditProfile={() => setShowProfileModal(true)}
+        >
+          {view === 'dashboard' && currentUser.type === USER_TYPES.TEACHER && (
+            <TeacherDashboard
+              user={currentUser}
+              classes={classes}
+              onCreateClass={handleCreateClass}
+              onSelectClass={handleSelectClass}
+              loading={classLoading || actionLoading}
+            />
+          )}
 
-        {view === 'dashboard' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
-          <StudentDashboard
-            user={currentUser}
-            myClasses={getStudentEnrolledClasses()}
-            availableClasses={getStudentAvailableClasses()}
-            enrolledClassIds={getEnrolledClassIds()}
-            pendingRequestIds={getPendingRequestIds()}
-            onRequestJoin={handleRequestJoin}
-            onSelectClass={handleSelectClass}
-            onLeaveClass={handleLeaveClass}
-            loading={classLoading || actionLoading}
-          />
-        )}
+          {view === 'dashboard' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
+            <StudentDashboard
+              user={currentUser}
+              myClasses={getStudentEnrolledClasses()}
+              availableClasses={getStudentAvailableClasses()}
+              enrolledClassIds={getEnrolledClassIds()}
+              pendingRequestIds={getPendingRequestIds()}
+              onRequestJoin={handleRequestJoin}
+              onSelectClass={handleSelectClass}
+              onLeaveClass={handleLeaveClass}
+              loading={classLoading || actionLoading}
+            />
+          )}
 
-        {view === 'class-detail' && currentUser.type === USER_TYPES.TEACHER && (
-          <ClassDetail
-            classData={selectedClass}
-            minutes={classMinutes}
-            requests={classRequests}
-            onBack={() => {
-              setView('dashboard');
-              setSelectedClass(null);
-              setClassMinutes([]);
-              setClassRequests([]);
-            }}
-            onAddMinutes={handleAddMinutes}
-            onEditMinutes={handleEditMinutes}
-            onDeleteMinutes={handleDeleteMinutes}
-            onApproveRequest={handleApproveRequest}
-            onRejectRequest={handleRejectRequest}
-            onRemoveStudent={handleRemoveStudent}
-            onDeleteClass={handleDeleteClass}
-            loading={actionLoading}
-          />
-        )}
+          {view === 'class-detail' && currentUser.type === USER_TYPES.TEACHER && (
+            <ClassDetail
+              classData={selectedClass}
+              minutes={classMinutes}
+              requests={classRequests}
+              onBack={() => {
+                setView('dashboard');
+                setSelectedClass(null);
+                setClassMinutes([]);
+                setClassRequests([]);
+              }}
+              onAddMinutes={handleAddMinutes}
+              onEditMinutes={handleEditMinutes}
+              onDeleteMinutes={handleDeleteMinutes}
+              onApproveRequest={handleApproveRequest}
+              onRejectRequest={handleRejectRequest}
+              onRemoveStudent={handleRemoveStudent}
+              onDeleteClass={handleDeleteClass}
+              loading={actionLoading}
+            />
+          )}
 
-        {view === 'class-detail' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
-          <ClassView
-            classData={selectedClass}
-            minutes={classMinutes}
-            onBack={() => {
-              setView('dashboard');
-              setSelectedClass(null);
-              setClassMinutes([]);
-            }}
-          />
-        )}
-      </MainLayout>
+          {view === 'class-detail' && (currentUser.type === USER_TYPES.STUDENT || currentUser.userType === 'student') && (
+            <ClassView
+              classData={selectedClass}
+              minutes={classMinutes}
+              onBack={() => {
+                setView('dashboard');
+                setSelectedClass(null);
+                setClassMinutes([]);
+              }}
+            />
+          )}
+        </MainLayout>
 
-      <ProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        user={currentUser}
-        onUpdate={handleUpdateProfile}
-      />
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          user={currentUser}
+          onUpdate={handleUpdateProfile}
+        />
+      </SocketProvider>
     </>
   );
 }
